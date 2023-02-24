@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qm_tools_aw"
+version = "1.0.0"
+authors = [
+  { name="Austin M. Wallace", email="awallace43@gatech.edu" },
+]
+description = "Provides some functions that I have found value in reusing for quantum chemistry related tasks."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Awallace3/qm_tools"
+"Bug Tracker" = "https://github.com/Awallace3/qm_tools/issues"
+
