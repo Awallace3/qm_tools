@@ -102,17 +102,37 @@ def print_cartesians(arr):
                 print("{:.10f} ".format(elem).rjust(3), end="\t")
         print(end="\n")
 
+def print_cartesians_dimer(geom, monAs, monBs, charges) -> str:
+    """
+    print_cartesians_dimer takes in dimer geometry and splits
+    by monAs and monBs slicing to produce monomers. The
+    charges are mult and charge.
+    """
+    m1 = geom[monAs]
+    m2 = geom[monBs]
+    c1, c2 = charges[1], charges[2]
+    print(*c1)
+    print_cartesians(m1)
+    print(f"--")
+    print(*c2)
+    print_cartesians(m2)
+    return
+
 
 def print_cartesians_pos_carts(pos: np.array, carts: np.array):
     """
     prints a 2-D numpy array in a nicer format
     """
     print()
+    lines = ""
     for n, r in enumerate(carts):
         x, y, z = r
         line = "{}\t{:.10f}\t{:.10f}\t{:.10f}".format(int(pos[n]), x, y, z)
+        lines += line + "\n"
         print(line)
     print()
+    return lines
+
 
 
 def write_cartesians_to_xyz(pos: np.array, carts: np.array, fn="out.xyz"):
