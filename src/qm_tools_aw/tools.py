@@ -1,6 +1,7 @@
 import pickle
 import numpy as np
 from periodictable import elements
+import qcelemental as qcel
 
 
 def create_pt_dict():
@@ -102,6 +103,7 @@ def print_cartesians(arr):
                 print("{:.10f} ".format(elem).rjust(3), end="\t")
         print(end="\n")
 
+
 def print_cartesians_dimer(geom, monAs, monBs, charges) -> str:
     """
     print_cartesians_dimer takes in dimer geometry and splits
@@ -132,7 +134,6 @@ def print_cartesians_pos_carts(pos: np.array, carts: np.array):
         print(line)
     print()
     return lines
-
 
 
 def write_cartesians_to_xyz(pos: np.array, carts: np.array, fn="out.xyz"):
@@ -177,3 +178,33 @@ def read_xyz_to_pos_carts(xyz_path="mol.xyz") -> (np.array, np.array):
         pos.append(el)
         carts.append([x, y, z])
     return np.array(pos), np.array(carts)
+
+
+def convert_geom_str_to_dimer_splits(geom) -> [np.array, np.array, np.array, np.array]:
+
+    """
+    convert_str_to_dimer_splits takes in geom as a STRING as a list or single string
+    and makes Molecule objects
+
+    returning order [RA, RB, ZA, ZB]
+    """
+    if type(geom) == str:
+        mol = qcel.models.Molecule.from_data(geom)
+        RA = mol.geometry[mol.fragments[0]]
+        RB = mol.geometry[mol.fragments[1]]
+        ZA = mol.atomic_numbers[mol.fragments[0]]
+        ZB = mol.atomic_numbers[mol.fragments[1]]
+        return [RA, RB, ZA, ZB]
+    elif type(geom) == list:
+        out = []
+        for i in geom:
+            mol = qcel.models.Molecule.from_data(i)
+            RA = mol.geometry[mol.fragments[0]]
+            RB = mol.geometry[mol.fragments[1]]
+            ZA = mol.atomic_numbers[mol.fragments[0]]
+            ZB = mol.atomic_numbers[mol.fragments[1]]
+            out.append([RA, RB, ZA, ZB])
+        return out
+    else:
+        print("Type not supported")
+        return []
