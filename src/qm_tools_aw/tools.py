@@ -180,30 +180,41 @@ def read_xyz_to_pos_carts(xyz_path="mol.xyz") -> (np.array, np.array):
     return np.array(pos), np.array(carts)
 
 
-def convert_geom_str_to_dimer_splits(geom) -> [np.array, np.array, np.array, np.array]:
+def convert_geom_str_to_dimer_splits(geom, units_angstroms=True) -> [np.array, np.array, np.array, np.array]:
 
     """
     convert_str_to_dimer_splits takes in geom as a STRING as a list or single string
     and makes Molecule objects
 
-    returning order [RA, RB, ZA, ZB]
+    returning order [ZA, ZB, RA, RB]
     """
+    m = 1
+    if units_angstroms:
+        m = qcel.constants.conversion_factor("bohr", "angstrom")
     if type(geom) == str:
         mol = qcel.models.Molecule.from_data(geom)
-        RA = mol.geometry[mol.fragments[0]]
-        RB = mol.geometry[mol.fragments[1]]
+        RA = mol.geometry[mol.fragments[0]] * m
+        RB = mol.geometry[mol.fragments[1]] * m
         ZA = mol.atomic_numbers[mol.fragments[0]]
         ZB = mol.atomic_numbers[mol.fragments[1]]
-        return [RA, RB, ZA, ZB]
+        TQA = mol.fragment_charges[0]
+        TQB = mol.fragment_charges[1]
+        # MA = mol.fragment_multiplicity[mol.fragments[0]]
+        # MB = mol.fragment_multiplicity[mol.fragments[1]]
+        return [ZA, ZB, RA, RB, TQA, TQB]
     elif type(geom) == list:
         out = []
         for i in geom:
             mol = qcel.models.Molecule.from_data(i)
-            RA = mol.geometry[mol.fragments[0]]
-            RB = mol.geometry[mol.fragments[1]]
+            RA = mol.geometry[mol.fragments[0]] * m
+            RB = mol.geometry[mol.fragments[1]] * m
             ZA = mol.atomic_numbers[mol.fragments[0]]
             ZB = mol.atomic_numbers[mol.fragments[1]]
-            out.append([RA, RB, ZA, ZB])
+            TQA = mol.fragment_charges[0]
+            TQB = mol.fragment_charges[1]
+            # MA = mol.fragment_multiplicity[mol.fragments[0]]
+            # MB = mol.fragment_multiplicity[mol.fragments[1]]
+            out.append([ZA, ZB, RA, RB, TQA, TQB])
         return out
     else:
         print("Type not supported")
