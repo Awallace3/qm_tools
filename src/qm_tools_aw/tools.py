@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 from periodictable import elements
 import qcelemental as qcel
+import pandas as pd
 
 
 def create_pt_dict():
@@ -31,6 +32,20 @@ def np_carts_to_string(carts):
         line = "{:d}\t{:.10f}\t{:.10f}\t{:.10f}\n".format(int(e), x, y, z)
         w += line
     return w
+
+
+def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
+    """
+    convert_schr_row_to_mol
+    """
+    ma, mb = r['monAs'], r['monBs']
+    g1, g2 = r['Geometry'][ma], r['Geometry'][mb]
+    m1 = f"{r['charges'][1][0]} {r['charges'][1][1]}\n"
+    m1 += print_cartesians_pos_carts(g1[:,0], g1[:,1:], only_results=True)
+    m2 = f"{r['charges'][2][0]} {r['charges'][2][1]}\n"
+    m2 += print_cartesians_pos_carts(g2[:,0], g2[:,1:], only_results=True)
+    mol = qcel.models.Molecule.from_data(m1 + "--\n" + m2)
+    return mol
 
 
 def string_carts_to_np(geom):
@@ -102,6 +117,7 @@ def print_cartesians(arr):
             else:
                 print("{:.10f} ".format(elem).rjust(3), end="\t")
         print(end="\n")
+    return
 
 
 def print_cartesians_dimer(geom, monAs, monBs, charges) -> str:
@@ -121,19 +137,49 @@ def print_cartesians_dimer(geom, monAs, monBs, charges) -> str:
     return
 
 
-def print_cartesians_pos_carts(pos: np.array, carts: np.array):
+def print_cartesians_pos_carts(pos: np.array, carts: np.array, only_results=False):
     """
     prints a 2-D numpy array in a nicer format
     """
-    print()
+    if not only_results:
+        print()
     lines = ""
     for n, r in enumerate(carts):
         x, y, z = r
         line = "{}\t{:.10f}\t{:.10f}\t{:.10f}".format(int(pos[n]), x, y, z)
         lines += line + "\n"
-        print(line)
-    print()
+        if not only_results:
+            print(line)
+    if not only_results:
+        print()
     return lines
+
+# def return_cartesians_pos_carts(pos: np.array, carts: np.array):
+#     """
+#     prints a 2-D numpy array in a nicer format
+#     """
+#     print()
+#     lines = ""
+#     for n, r in enumerate(carts):
+#         x, y, z = r
+#         line = "{}\t{:.10f}\t{:.10f}\t{:.10f}".format(int(pos[n]), x, y, z)
+#         lines += line + "\n"
+#         print(line)
+#     print()
+#     return lines
+
+def carts_to_xyz(pos: np.array, carts: np.array, el_dc=create_el_num_to_symbol()):
+    """
+    creates xyz file from pos and carts
+    """
+    out = ""
+    start = f"{len(pos)}\n\n"
+    out += start
+    for n, r in enumerate(carts):
+        x, y, z = r
+        line = "{}\t{:.10f}\t{:.10f}\t{:.10f}\n".format(el_dc[int(pos[n])], x, y, z)
+        out += line
+    return out
 
 
 def write_cartesians_to_xyz(pos: np.array, carts: np.array, fn="out.xyz"):
@@ -143,7 +189,9 @@ def write_cartesians_to_xyz(pos: np.array, carts: np.array, fn="out.xyz"):
     el_dc = create_el_num_to_symbol()
     out = ""
     with open(fn, "w") as f:
-        f.write(f"{len(pos)}\n\n")
+        start = f"{len(pos)}\n\n"
+        out += start
+        f.write(start)
         for n, r in enumerate(carts):
             x, y, z = r
             line = "{}\t{:.10f}\t{:.10f}\t{:.10f}\n".format(el_dc[int(pos[n])], x, y, z)
@@ -162,7 +210,7 @@ def read_pickle(fname="data.pickle"):
         return pickle.load(handle)
 
 
-def read_xyz_to_pos_carts(xyz_path="mol.xyz") -> (np.array, np.array):
+def read_xyz_to_pos_carts(xyz_path="mol.xyz",) -> (np.array, np.array):
     """
     read_xyz_to_pos_carts reads xyz file and returns pos and carts
     """
@@ -173,7 +221,10 @@ def read_xyz_to_pos_carts(xyz_path="mol.xyz") -> (np.array, np.array):
     pos, carts = [], []
     for l in d:
         l = l.split()
-        el = el_dc[l[0]]
+        if l[0].isnumeric():
+            el = int(l[0])
+        else:
+            el = el_dc[l[0]]
         x, y, z = float(l[1]), float(l[2]), float(l[3])
         pos.append(el)
         carts.append([x, y, z])
