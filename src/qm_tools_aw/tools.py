@@ -4,6 +4,15 @@ from periodictable import elements
 import qcelemental as qcel
 import pandas as pd
 
+def save_pkl(file_name, obj):
+    with open(file_name, "wb") as fobj:
+        pickle.dump(obj, fobj)
+
+
+def load_pkl(file_name):
+    with open(file_name, "rb") as fobj:
+        return pickle.load(fobj)
+
 
 def create_pt_dict():
     """
