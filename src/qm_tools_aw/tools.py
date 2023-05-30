@@ -5,6 +5,16 @@ import qcelemental as qcel
 import pandas as pd
 
 
+def save_pkl(file_name, obj):
+    with open(file_name, "wb") as fobj:
+        pickle.dump(obj, fobj)
+
+
+def load_pkl(file_name):
+    with open(file_name, "rb") as fobj:
+        return pickle.load(fobj)
+
+
 def create_pt_dict():
     """
     create_pt_dict creates dictionary for string elements to atomic number.
@@ -216,14 +226,17 @@ def carts_to_xyz(pos: np.array, carts: np.array, el_dc=create_el_num_to_symbol()
     return out
 
 
-def write_cartesians_to_xyz(pos: np.array, carts: np.array, fn="out.xyz"):
+def write_cartesians_to_xyz(pos: np.array, carts: np.array, fn="out.xyz", charge_multiplicity=None):
     """
     creates xyz file from pos and carts
     """
     el_dc = create_el_num_to_symbol()
     out = ""
     with open(fn, "w") as f:
-        start = f"{len(pos)}\n\n"
+        cm = ""
+        if charge_multiplicity is not None:
+            cm = f"{charge_multiplicity[0]} {charge_multiplicity[1]}\n"
+        start = f"{len(pos)}\n{cm}\n"
         out += start
         f.write(start)
         for n, r in enumerate(carts):
