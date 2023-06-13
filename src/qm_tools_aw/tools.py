@@ -116,14 +116,15 @@ def string_carts_to_np(geom):
     return m, charges, monA, monB
 
 
-def print_cartesians(arr):
+def print_cartesians(arr, symbols=False):
     """
     prints a 2-D numpy array in a nicer format
     """
     for a in arr:
         for i, elem in enumerate(a):
             if i == 0:
-                print("{} ".format(int(elem)), end="\t")
+                elem = qcel.periodictable.to_E(int(elem))
+                print("{} ".format(elem), end="\t")
             else:
                 print("{:.10f} ".format(elem).rjust(3), end="\t")
         print(end="\n")
@@ -279,6 +280,46 @@ def read_xyz_to_pos_carts(
         carts.append([x, y, z])
     return np.array(pos), np.array(carts)
 
+def read_geom_to_pos_carts_nmers(
+    xyz_path="mol.xyz", start=4,
+) -> [np.ndarray, np.ndarray]:
+    """
+    read_xyz_to_pos_carts reads xyz file and returns pos and carts
+    """
+    el_dc = create_pt_dict()
+    with open(xyz_path, "r") as f:
+        d = f.readlines()[start:]
+
+    pos, carts = [[]], [[]]
+    pc_ind = 0
+    for l in d:
+        if "--" in l:
+            pc_ind += 1
+            pos.append([])
+            carts.append([])
+            continue
+
+        l = l.split()
+        if l[0].isnumeric():
+            el = int(l[0])
+        else:
+            try:
+                el = el_dc[l[0]]
+            except (KeyError, IndexError):
+                el = l[0][0] + l[0][1:].lower()
+                el = el_dc[el]
+                print("Warning: element not in periodic table, using first letter")
+                return [], []
+        x, y, z = float(l[1]), float(l[2]), float(l[3])
+        pos[pc_ind].append(el)
+        carts[pc_ind].append([x, y, z])
+    for i in range(len(pos)):
+        pos[i] = np.array(pos[i])
+        carts[i] = np.array(carts[i])
+    if len(pos) == 1:
+        pos = pos[0]
+        carts = carts[0]
+    return pos, carts
 
 def convert_geom_str_to_dimer_splits(
     geom, units_angstroms=True
