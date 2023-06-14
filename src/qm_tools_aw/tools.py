@@ -120,15 +120,20 @@ def print_cartesians(arr, symbols=False):
     """
     prints a 2-D numpy array in a nicer format
     """
+    l = ""
     for a in arr:
         for i, elem in enumerate(a):
             if i == 0:
                 elem = qcel.periodictable.to_E(int(elem))
                 print("{} ".format(elem), end="\t")
+                l+= "{} \t".format(elem)
             else:
                 print("{:.10f} ".format(elem).rjust(3), end="\t")
+                l+= "{:.10f} ".format(elem).rjust(3)
+                l+= "\t"
         print(end="\n")
-    return
+        l+= "\n"
+    return l
 
 
 def print_cartesians_dimer(geom, monAs, monBs, charges) -> str:
