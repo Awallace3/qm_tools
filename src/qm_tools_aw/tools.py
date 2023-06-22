@@ -57,6 +57,18 @@ def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
     mol = qcel.models.Molecule.from_data(m1 + "--\n" + m2)
     return mol
 
+def convert_pos_carts_to_mol(pos, carts):
+    m1 = ""
+    for i in range(len(pos)):
+        if i > 0:
+            m1 += "--\n"
+        m1 += f"0 1\n"
+        m1 += print_cartesians_pos_carts(pos[i], carts[i], only_results=True)
+    print(m1)
+    mol = qcel.models.Molecule.from_data(m1)
+    print(mol)
+    return mol
+
 
 def string_carts_to_np(geom):
     geom = geom.split("\n")
@@ -120,6 +132,10 @@ def print_cartesians(arr, symbols=False):
     """
     prints a 2-D numpy array in a nicer format
     """
+    shape = np.shape(arr)
+    if shape[1] != 4:
+        raise ValueError("Array must be Nx4")
+
     l = ""
     for a in arr:
         for i, elem in enumerate(a):
@@ -289,7 +305,7 @@ def read_geom_to_pos_carts_nmers(
     xyz_path="mol.xyz", start=4,
 ) -> [np.ndarray, np.ndarray]:
     """
-    read_xyz_to_pos_carts reads xyz file and returns pos and carts
+    read_xyz_to_pos_carts reads xyz file and returns pos and carts for AP-Net prediction
     """
     el_dc = create_pt_dict()
     with open(xyz_path, "r") as f:
