@@ -57,6 +57,7 @@ def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
     mol = qcel.models.Molecule.from_data(m1 + "--\n" + m2)
     return mol
 
+
 def convert_pos_carts_to_mol(pos, carts):
     m1 = ""
     for i in range(len(pos)):
@@ -64,9 +65,7 @@ def convert_pos_carts_to_mol(pos, carts):
             m1 += "--\n"
         m1 += f"0 1\n"
         m1 += print_cartesians_pos_carts(pos[i], carts[i], only_results=True)
-    print(m1)
     mol = qcel.models.Molecule.from_data(m1)
-    print(mol)
     return mol
 
 
@@ -142,13 +141,13 @@ def print_cartesians(arr, symbols=False):
             if i == 0:
                 elem = qcel.periodictable.to_E(int(elem))
                 print("{} ".format(elem), end="\t")
-                l+= "{} \t".format(elem)
+                l += "{} \t".format(elem)
             else:
                 print("{:.10f} ".format(elem).rjust(3), end="\t")
-                l+= "{:.10f} ".format(elem).rjust(3)
-                l+= "\t"
+                l += "{:.10f} ".format(elem).rjust(3)
+                l += "\t"
         print(end="\n")
-        l+= "\n"
+        l += "\n"
     return l
 
 
@@ -248,7 +247,9 @@ def carts_to_xyz(pos: np.array, carts: np.array, el_dc=create_el_num_to_symbol()
     return out
 
 
-def write_cartesians_to_xyz(pos: np.array, carts: np.array, fn="out.xyz", charge_multiplicity=None):
+def write_cartesians_to_xyz(
+    pos: np.array, carts: np.array, fn="out.xyz", charge_multiplicity=None
+):
     """
     creates xyz file from pos and carts
     """
@@ -301,8 +302,10 @@ def read_xyz_to_pos_carts(
         carts.append([x, y, z])
     return np.array(pos), np.array(carts)
 
+
 def read_geom_to_pos_carts_nmers(
-    xyz_path="mol.xyz", start=4,
+    xyz_path="mol.xyz",
+    start=4,
 ) -> [np.ndarray, np.ndarray]:
     """
     read_xyz_to_pos_carts reads xyz file and returns pos and carts for AP-Net prediction
@@ -342,10 +345,10 @@ def read_geom_to_pos_carts_nmers(
         carts = carts[0]
     return pos, carts
 
+
 def convert_geom_str_to_dimer_splits(
     geom, units_angstroms=True
 ) -> [np.array, np.array, np.array, np.array]:
-
     """
     convert_str_to_dimer_splits takes in geom as a STRING as a list or single string
     and makes Molecule objects
@@ -383,3 +386,52 @@ def convert_geom_str_to_dimer_splits(
     else:
         print("Type not supported")
         return []
+
+
+def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
+    cD = mol.geometry
+    if units_angstroms:
+        cD = cD * qcel.constants.conversion_factor("bohr", "angstrom")
+    pD = mol.atomic_numbers
+    geom = np.hstack((pD.reshape(-1, 1), cD))
+    # tools.print_cartesians_pos_carts(pD, cD)
+    ma = list(mol.fragments[0])
+    mb = list(mol.fragments[1])
+    charges = np.array(
+        [
+            [int(mol.molecular_charge), int(mol.molecular_multiplicity)],
+            [int(mol.fragment_charges[0]), (mol.fragment_multiplicities[0])],
+            [int(mol.fragment_charges[1]), (mol.fragment_multiplicities[1])],
+        ]
+    )
+    qcel.models.Molecule.from_data
+    return geom, pD, cD, ma, mb, charges
+
+
+def mol_qcdb_to_pos_carts_ma_mb(mol, units_angstroms=True):
+    from psi4.driver import qcdb
+
+    p4_input = mol.format_molecule_for_psi4()
+    p4_input = "\n".join(p4_input.split("\n")[1:-2])
+    geom = mol.format_molecule_for_numpy()
+    cD = geom[:, 1:]
+    pD = geom[:, 0]
+    s, e = mol.fragments[0]
+    ma = [i for i in range(s, e + 1)]
+    s, e = mol.fragments[1]
+    mb = [i for i in range(s, e + 1)]
+    total_charge = 0
+    for i in mol.fragment_charges:
+        total_charge += i
+    charges = np.array(
+        [
+            [
+                int(total_charge),
+                int(mol.PYmultiplicity),
+            ],
+            [int(mol.fragment_charges[0]), (mol.fragment_multiplicities[0])],
+            [int(mol.fragment_charges[1]), (mol.fragment_multiplicities[1])],
+        ]
+    )
+    qcel.models.Molecule.from_data
+    return p4_input, geom, pD, cD, ma, mb, charges
