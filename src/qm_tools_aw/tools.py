@@ -39,9 +39,32 @@ def np_carts_to_string(carts):
     w = ""
     for n, r in enumerate(carts):
         e, x, y, z = r
-        line = "{:d}\t{:.10f}\t{:.10f}\t{:.10f}\n".format(int(e), x, y, z)
+        line = "{:d}\t{:.10f}\t{:.10f}\t{:.10f}".format(int(e), x, y, z)
+        if n != len(carts) - 1:
+            line += "\n"
         w += line
     return w
+
+
+def generate_p4input_from_df(geometry, charges, monAs, monBs, units="angstrom"):
+    ma, mb = [], []
+    for i in monAs:
+        ma.append(geometry[i, :])
+    for i in monBs:
+        mb.append(geometry[i, :])
+    ma = np_carts_to_string(ma)
+    mb = np_carts_to_string(mb)
+    charges = [[0, 1] for i in range(3)]
+    geom = f"{charges[1][0]} {charges[1][1]}\n{ma}"
+    geom += f"\n--\n{charges[2][0]} {charges[2][1]}\n{mb}"
+    if units == "angstrom":
+        geom += "\nunits angstrom"
+    elif units == "bohr":
+        geom += "\nunits bohr"
+    else:
+        raise ValueError("units must be either angstrom or bohr")
+    return geom
+
 
 
 def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
@@ -416,10 +439,36 @@ def mol_qcdb_to_pos_carts_ma_mb(mol, units_angstroms=True):
     geom = mol.format_molecule_for_numpy()
     cD = geom[:, 1:]
     pD = geom[:, 0]
-    s, e = mol.fragments[0]
-    ma = [i for i in range(s, e + 1)]
-    s, e = mol.fragments[1]
-    mb = [i for i in range(s, e + 1)]
+    start = False
+    skip_twice = False
+    fragment_inds = []
+    fragment_ind = 0
+    total_index = 0
+    lines = p4_input.split("\n")
+    for n, l in enumerate(lines):
+        if not start and "--" in l:
+            start = True
+            skip_twice = True
+            fragment_inds.append([])
+            continue
+        if "--" in l:
+            skip_twice = True
+            fragment_inds.append([])
+            fragment_ind += 1
+            continue
+        if skip_twice:
+            skip_twice = False
+            continue
+        if "".join(l.split()) == "":
+            break
+        if start:
+            if " X " in l:
+                continue
+            else:
+                fragment_inds[fragment_ind].append(total_index)
+                total_index += 1
+    ma, mb = fragment_inds[0], fragment_inds[1]
+
     total_charge = 0
     for i in mol.fragment_charges:
         total_charge += i
