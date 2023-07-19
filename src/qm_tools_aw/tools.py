@@ -484,3 +484,19 @@ def mol_qcdb_to_pos_carts_ma_mb(mol, units_angstroms=True):
     )
     qcel.models.Molecule.from_data
     return p4_input, geom, pD, cD, ma, mb, charges
+
+
+def remove_extra_wb(line: str):
+    """
+    Removes extra whitespace in a string for better splitting.
+    """
+    line = (
+        line.replace("    ", " ")
+        .replace("   ", " ")
+        .replace("  ", " ")
+        .replace("  ", " ")
+        .replace("\n ", "\n")
+    )
+    return line
+
+
