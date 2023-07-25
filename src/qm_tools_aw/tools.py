@@ -54,7 +54,6 @@ def generate_p4input_from_df(geometry, charges, monAs, monBs, units="angstrom"):
         mb.append(geometry[i, :])
     ma = np_carts_to_string(ma)
     mb = np_carts_to_string(mb)
-    charges = [[0, 1] for i in range(3)]
     geom = f"{charges[1][0]} {charges[1][1]}\n{ma}"
     geom += f"\n--\n{charges[2][0]} {charges[2][1]}\n{mb}"
     if units == "angstrom":
