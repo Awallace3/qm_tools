@@ -19,6 +19,11 @@ def dict_to_json(d: dict, fn: str):
         f.write(json_dump)
     return
 
+def json_to_dict(fn: str):
+    with open(fn, "r") as f:
+        d = json.load(f)
+    return d
+
 
 def save_pkl(file_name, obj):
     with open(file_name, "wb") as fobj:
