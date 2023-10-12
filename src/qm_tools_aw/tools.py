@@ -3,6 +3,21 @@ import numpy as np
 from periodictable import elements
 import qcelemental as qcel
 import pandas as pd
+import json
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
+def dict_to_json(d: dict, fn: str):
+    with open(fn, "w") as f:
+        json_dump = json.dumps(d, indent=4, cls=NumpyEncoder)
+        f.write(json_dump)
+    return
 
 
 def save_pkl(file_name, obj):
@@ -63,7 +78,6 @@ def generate_p4input_from_df(geometry, charges, monAs, monBs, units="angstrom"):
     else:
         raise ValueError("units must be either angstrom or bohr")
     return geom
-
 
 
 def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
@@ -304,6 +318,7 @@ def read_pickle(fname="data.pickle"):
 
 def read_xyz_to_pos_carts(
     xyz_path="mol.xyz",
+    array_2d=False,
 ) -> (np.array, np.array):
     """
     read_xyz_to_pos_carts reads xyz file and returns pos and carts
@@ -322,7 +337,11 @@ def read_xyz_to_pos_carts(
         x, y, z = float(l[1]), float(l[2]), float(l[3])
         pos.append(el)
         carts.append([x, y, z])
-    return np.array(pos), np.array(carts)
+    pos = np.array(pos)
+    carts = np.array(carts)
+    if array_2d:
+        return np.hstack((pos.reshape(-1, 1), carts))
+    return pos, carts
 
 
 def read_geom_to_pos_carts_nmers(
@@ -497,5 +516,3 @@ def remove_extra_wb(line: str):
         .replace("\n ", "\n")
     )
     return line
-
-
