@@ -21,7 +21,7 @@ def dict_to_json(d: dict, fn: str):
 
 def json_to_dict(fn: str):
     with open(fn, "r") as f:
-        d = json.load(f)
+        d = json.load(f, cls=NumpyEncoder)
     return d
 
 
@@ -66,22 +66,32 @@ def np_carts_to_string(carts):
     return w
 
 
-def generate_p4input_from_df(geometry, charges, monAs, monBs, units="angstrom"):
-    ma, mb = [], []
-    for i in monAs:
-        ma.append(geometry[i, :])
-    for i in monBs:
-        mb.append(geometry[i, :])
-    ma = np_carts_to_string(ma)
-    mb = np_carts_to_string(mb)
-    geom = f"{charges[1][0]} {charges[1][1]}\n{ma}"
-    geom += f"\n--\n{charges[2][0]} {charges[2][1]}\n{mb}"
-    if units == "angstrom":
-        geom += "\nunits angstrom"
-    elif units == "bohr":
-        geom += "\nunits bohr"
+def generate_p4input_from_df(geometry, charges, monAs, monBs=None, units="angstrom"):
+    if monBs is not None:
+        ma, mb = [], []
+        for i in monAs:
+            ma.append(geometry[i, :])
+        for i in monBs:
+            mb.append(geometry[i, :])
+        ma = np_carts_to_string(ma)
+        mb = np_carts_to_string(mb)
+        geom = f"{charges[1][0]} {charges[1][1]}\n{ma}"
+        geom += f"\n--\n{charges[2][0]} {charges[2][1]}\n{mb}"
+        if units == "angstrom":
+            geom += "\nunits angstrom"
+        elif units == "bohr":
+            geom += "\nunits bohr"
+        else:
+            raise ValueError("units must be either angstrom or bohr")
     else:
-        raise ValueError("units must be either angstrom or bohr")
+        ma = np_carts_to_string(geometry)
+        geom = f"{charges[0]} {charges[1]}\n{ma}"
+        if units == "angstrom":
+            geom += "\nunits angstrom"
+        elif units == "bohr":
+            geom += "\nunits bohr"
+        else:
+            raise ValueError("units must be either angstrom or bohr")
     return geom
 
 
