@@ -19,9 +19,16 @@ def dict_to_json(d: dict, fn: str):
         f.write(json_dump)
     return
 
-def json_to_dict(fn: str):
+# def json_to_dict(fn: str):
+#     with open(fn, "r") as f:
+#         d = json.load(f, cls=NumpyEncoder)
+#     return d
+def json_to_dict(fn: str, return_numpy=False):
     with open(fn, "r") as f:
-        d = json.load(f, cls=NumpyEncoder)
+        d = json.load(f)
+        for k, v in d.items():
+            if type(v) == list:
+                d[k] = np.array(v)
     return d
 
 
@@ -450,7 +457,6 @@ def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
         cD = cD * qcel.constants.conversion_factor("bohr", "angstrom")
     pD = mol.atomic_numbers
     geom = np.hstack((pD.reshape(-1, 1), cD))
-    # tools.print_cartesians_pos_carts(pD, cD)
     ma = list(mol.fragments[0])
     mb = list(mol.fragments[1])
     charges = np.array(
