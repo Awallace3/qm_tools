@@ -555,3 +555,21 @@ def remove_extra_wb(line: str):
         .replace("\n ", "\n")
     )
     return line
+
+def psi4_input_to_geom_monABs_charges(psi4_input, output_units="angstrom"):
+    mol = qcel.models.Molecule.from_data(psi4_input)
+    geom = mol.geometry
+    if output_units == "angstrom":
+        geom = geom * qcel.constants.conversion_factor("bohr", "angstrom")
+    Z = mol.atomic_numbers
+    geom = np.hstack((Z.reshape(-1, 1), geom))
+    monAs = np.array(mol.fragments[0])
+    monBs = np.array(mol.fragments[1])
+    charges = np.array(
+        [
+            [int(mol.molecular_charge), int(mol.molecular_multiplicity)],
+            [int(mol.fragment_charges[0]), int(mol.fragment_multiplicities[0])],
+            [int(mol.fragment_charges[1]), int(mol.fragment_multiplicities[1])],
+        ]
+    )
+    return geom, monAs, monBs, charges
