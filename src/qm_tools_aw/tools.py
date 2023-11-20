@@ -101,6 +101,24 @@ def generate_p4input_from_df(geometry, charges, monAs, monBs=None, units="angstr
             raise ValueError("units must be either angstrom or bohr")
     return geom
 
+def generate_mol_from_df_row_tl(d1, units="angstrom"):
+    ma = d1["RA"]
+    mb = d1["RB"]
+    ma = np_carts_to_string(ma)
+    mb = np_carts_to_string(mb)
+    charges = d1["charges"]
+    geom = f"{charges[1][0]} {charges[1][1]}\n{ma}"
+    geom += f"\n--\n{charges[2][0]} {charges[2][1]}\n{mb}"
+    if units == "angstrom":
+        geom += "\nunits angstrom"
+    elif units == "bohr":
+        geom += "\nunits bohr"
+    else:
+        raise ValueError("units must be either angstrom or bohr")
+    mol = qcel.models.Molecule.from_data(geom)
+    # check if mol is nan
+    return mol
+
 
 def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
     """
