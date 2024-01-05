@@ -1,3 +1,6 @@
 from . import tools
 from . import sapt
-from . import plot
+try:
+    from . import plot
+except ImportError:
+    pass
