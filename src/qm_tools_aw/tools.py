@@ -4,6 +4,7 @@ from periodictable import elements
 import qcelemental as qcel
 import pandas as pd
 import json
+import subprocess
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -573,3 +574,58 @@ def psi4_input_to_geom_monABs_charges(psi4_input, output_units="angstrom"):
         ]
     )
     return geom, monAs, monBs, charges
+
+def combine_geometries(pA, pB, geomA, geomB):
+    """
+    combine_geometries takes in two geometries and combines them
+    """
+    pA = pA.reshape(-1, 1)
+    pB = pB.reshape(-1, 1)
+    pA = np.hstack((pA, geomA))
+    pB = np.hstack((pB, geomB))
+    return np.vstack((pA, pB))
+
+def read_psi4_input_file_molecule(input_path):
+    with open(input_path, "r") as f:
+        lines = f.readlines()
+    geom = []
+    start = False
+    for n, l in enumerate(lines):
+        if "mol" in l:
+            start = True
+        elif "}" in l:
+            end = n
+            break
+        elif start:
+            geom.append(l)
+    geom = "".join(geom)
+    geom, monAs, monBs, charges = psi4_input_to_geom_monABs_charges(geom)
+    return geom, monAs, monBs, charges
+
+def read_psi4_input_molecule(file):
+    start_linenumber = subprocess.run(f"grep -n 'molecule {{' {file} | cut -d: -f1", shell=True, check=True, capture_output=True)
+    start_linenumber = int(start_linenumber.stdout.decode('utf-8').strip())
+    end_linenumber = subprocess.run(f"grep -n '}}' {file} | cut -d: -f1", shell=True, check=True, capture_output=True)
+    end_linenumber = end_linenumber.stdout.decode('utf-8').strip().split('\n')
+    for i in range(len(end_linenumber)):
+        end_linenumber[i] = int(end_linenumber[i])
+        if end_linenumber[i] > start_linenumber:
+            end_linenumber = end_linenumber[i]
+            break
+    cmd = f"sed -n '{start_linenumber + 1},{end_linenumber}p' {file}"
+    out = subprocess.run(cmd, shell=True, check=True, capture_output=True)
+    molecule = out.stdout.decode('utf-8', 'ignore').strip().split("\n")
+    if molecule[-1] == "}":
+        molecule.pop()
+    elif "}" in molecule[-1]:
+        molecule[-1] = molecule[-1].replace("}", "")
+    molecule = "\n".join(molecule)
+    qcel_molecule = qcel.models.Molecule.from_data(molecule)
+    return qcel_molecule
+
+def read_psi4_input_molecule_to_df_monomer(file):
+    qc_mol = read_psi4_input_molecule(file)
+    geom = qc_mol.geometry
+    Z = qc_mol.atomic_numbers
+    charges = [int(qc_mol.molecular_charge), qc_mol.molecular_multiplicity]
+    return geom, Z, charges
