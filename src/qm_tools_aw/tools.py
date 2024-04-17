@@ -4,6 +4,8 @@ from periodictable import elements
 import qcelemental as qcel
 import pandas as pd
 import json
+import subprocess
+import os
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -18,6 +20,7 @@ def dict_to_json(d: dict, fn: str):
         json_dump = json.dumps(d, indent=4, cls=NumpyEncoder)
         f.write(json_dump)
     return
+
 
 # def json_to_dict(fn: str):
 #     with open(fn, "r") as f:
@@ -100,6 +103,7 @@ def generate_p4input_from_df(geometry, charges, monAs, monBs=None, units="angstr
         else:
             raise ValueError("units must be either angstrom or bohr")
     return geom
+
 
 def generate_mol_from_df_row_tl(d1, units="angstrom"):
     ma = d1["RA"]
@@ -556,6 +560,7 @@ def remove_extra_wb(line: str):
     )
     return line
 
+
 def psi4_input_to_geom_monABs_charges(psi4_input, output_units="angstrom"):
     mol = qcel.models.Molecule.from_data(psi4_input)
     geom = mol.geometry
@@ -573,3 +578,113 @@ def psi4_input_to_geom_monABs_charges(psi4_input, output_units="angstrom"):
         ]
     )
     return geom, monAs, monBs, charges
+
+
+def combine_geometries(pA, pB, geomA, geomB):
+    """
+    combine_geometries takes in two geometries and combines them
+    """
+    pA = pA.reshape(-1, 1)
+    pB = pB.reshape(-1, 1)
+    pA = np.hstack((pA, geomA))
+    pB = np.hstack((pB, geomB))
+    return np.vstack((pA, pB))
+
+
+def read_psi4_input_file_molecule(input_path):
+    with open(input_path, "r") as f:
+        lines = f.readlines()
+    geom = []
+    start = False
+    for n, l in enumerate(lines):
+        if "mol" in l:
+            start = True
+        elif "}" in l:
+            end = n
+            break
+        elif start:
+            geom.append(l)
+    geom = "".join(geom)
+    geom, monAs, monBs, charges = psi4_input_to_geom_monABs_charges(geom)
+    return geom, monAs, monBs, charges
+
+
+def read_psi4_input_molecule(file):
+    start_linenumber = subprocess.run(
+        f"grep -n 'molecule' {file} | cut -d: -f1",
+        shell=True,
+        check=True,
+        capture_output=True,
+    )
+    # start_linenumber = subprocess.run(f"grep -n 'molecule {{' {file} | cut -d: -f1", shell=True, check=True, capture_output=True)
+    start_linenumber = int(start_linenumber.stdout.decode("utf-8").strip())
+    end_linenumber = subprocess.run(
+        f"grep -n '}}' {file} | cut -d: -f1",
+        shell=True,
+        check=True,
+        capture_output=True,
+    )
+    end_linenumber = end_linenumber.stdout.decode("utf-8").strip().split("\n")
+    for i in range(len(end_linenumber)):
+        end_linenumber[i] = int(end_linenumber[i])
+        if end_linenumber[i] > start_linenumber:
+            end_linenumber = end_linenumber[i]
+            break
+    cmd = f"sed -n '{start_linenumber + 1},{end_linenumber}p' {file}"
+    out = subprocess.run(cmd, shell=True, check=True, capture_output=True)
+    molecule = out.stdout.decode("utf-8", "ignore").strip().split("\n")
+    if molecule[-1] == "}":
+        molecule.pop()
+    elif "}" in molecule[-1]:
+        molecule[-1] = molecule[-1].replace("}", "")
+    molecule = "\n".join(molecule)
+    qcel_molecule = qcel.models.Molecule.from_data(molecule)
+    return qcel_molecule
+
+
+def read_psi4_input_molecule_to_df_monomer(file):
+    qc_mol = read_psi4_input_molecule(file)
+    geom = qc_mol.geometry
+    Z = qc_mol.atomic_numbers
+    charges = [int(qc_mol.molecular_charge), qc_mol.molecular_multiplicity]
+    return geom, Z, charges
+
+
+def read_psi4_input_molecule_to_df_dimer(file, verbose=False):
+    qc_mol = read_psi4_input_molecule(file)
+    geom = qc_mol.geometry
+    Z = qc_mol.atomic_numbers
+    charges = np.array(
+        [
+            [int(qc_mol.molecular_charge), qc_mol.molecular_multiplicity],
+            [int(qc_mol.fragment_charges[0]), qc_mol.fragment_multiplicities[0]],
+            [int(qc_mol.fragment_charges[1]), qc_mol.fragment_multiplicities[1]],
+        ]
+    )
+    geom = np.hstack((Z.reshape(-1, 1), geom))
+    monA = qc_mol.fragments[0]
+    monB = qc_mol.fragments[1]
+    if verbose:
+        print_cartesians(geom, symbols=True)
+        print(charges)
+        print(monA, monB)
+    return geom, Z, charges, monA, monB
+
+
+def read_psi4_input_molecule_to_df(monA_p, monB_p=None):
+    if not os.path.exists(monA_p):
+        print(f"{monA_p = } does not exist")
+        return None, None, None, None
+    if monB_p:
+        if not os.path.exists(monB_p):
+            print(f"{monB_p = } does not exist")
+            return None, None, None, None
+        gA, pA, cA = read_psi4_input_molecule_to_df_monomer(monA_p)
+        gB, pB, cB = read_psi4_input_molecule_to_df_monomer(monB_p)
+        geom = combine_geometries(pA, pB, gA, gB)
+        c = [[cA[0] + cB[0], 1], cA, cB]
+        monA = [i for i in range(len(pA))]
+        monB = [i for i in range(len(pA), len(pA) + len(pB))]
+    else:
+        geom, _, c, monA, monB = read_psi4_input_molecule_to_df_dimer(monA_p)
+    return geom, monA, monB, c
