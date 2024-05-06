@@ -43,6 +43,7 @@ def violin_plot(
     dpi=1200,
     pdf=False,
     usetex=True,
+    error_statistics_precision=2,
 
 ) -> None:
     """
@@ -57,6 +58,9 @@ def violin_plot(
     annotations = []  # [(x, y, text), ...]
     cnt = 1
     plt.rcParams["text.usetex"] = usetex
+    def format_error_statistics(x):
+        return f"{x:.{error_statistics_precision}f}"
+
     for k, v in vals.items():
         df[v] = pd.to_numeric(df[v])
         df_sub = df[df[v].notna()].copy()
@@ -67,11 +71,11 @@ def violin_plot(
         rmse = df_sub[v].apply(lambda x: x**2).mean() ** 0.5
         mae = df_sub[v].apply(lambda x: abs(x)).mean()
         max_error = df_sub[v].apply(lambda x: abs(x)).max()
-        text = r"$\mathit{%.2f}$" % mae
+        text = r"$\mathit{%s}$" % format_error_statistics(mae)
         text += "\n"
-        text += r"$\mathbf{%.2f}$" % rmse
+        text += r"$\mathbf{%s}$" % format_error_statistics(rmse)
         text += "\n"
-        text += r"$\mathrm{%.2f}$" % max_error
+        text += r"$\mathrm{%s}$" % format_error_statistics(max_error)
         annotations.append((cnt, m, text))
         cnt += 1
 
