@@ -76,7 +76,14 @@ def np_carts_to_string(carts):
     return w
 
 
-def generate_p4input_from_df(geometry, charges, monAs, monBs=None, units="angstrom"):
+def generate_p4input_from_df(
+    geometry,
+    charges,
+    monAs,
+    monBs=None,
+    units="angstrom",
+    extra=None,  # ="symmetry c1\nno_reorient\n no_com"
+):
     if monBs is not None:
         ma, mb = [], []
         for i in monAs:
@@ -102,6 +109,8 @@ def generate_p4input_from_df(geometry, charges, monAs, monBs=None, units="angstr
             geom += "\nunits bohr"
         else:
             raise ValueError("units must be either angstrom or bohr")
+    if extra is not None:
+        geom += f"\n{extra}"
     return geom
 
 
@@ -471,6 +480,13 @@ def convert_geom_str_to_dimer_splits(
     else:
         print("Type not supported")
         return []
+
+# def psi4_mol_to_grac_shift_mols(
+#     mol,
+# ) -> []:
+#     m = 1
+#     mol_a = mol.
+#     return
 
 
 def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
