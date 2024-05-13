@@ -27,6 +27,8 @@ def dict_to_json(d: dict, fn: str):
 #         d = json.load(f, cls=NumpyEncoder)
 #     return d
 def json_to_dict(fn: str, return_numpy=False):
+    if not os.path.exists(fn):
+        return None
     with open(fn, "r") as f:
         d = json.load(f)
         for k, v in d.items():
