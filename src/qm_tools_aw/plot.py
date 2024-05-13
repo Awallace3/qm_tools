@@ -1,10 +1,10 @@
 import os
-# import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
 kcal_per_mol = "$\mathrm{kcal\cdot mol^{-1}}$"
+
 
 def create_minor_y_ticks(ylim):
     diff = abs(ylim[1] - ylim[0])
@@ -26,42 +26,52 @@ def create_minor_y_ticks(ylim):
     minor_yticks = np.arange(lower_bound, upper_bound, inc)
     return minor_yticks
 
+
 def violin_plot(
     df,
-    vals: {},
-    title_name: str,
-    pfn: str,
+    df_labels_and_columns: {},
+    output_filename: str,
+    plt_title: str = None,
+    output_path: str = "./",
     bottom: float = 0.4,
-    ylim=[-15, 35],
-    transparent=True,
-    widths=0.85,
-    figure_size=None,
+    ylim: list = None,
+    transparent: bool = False,
+    widths: float = 0.85,
+    figure_size: tuple = None,
     set_xlable=False,
     x_label_rotation=90,
     x_label_fontsize=8,
     ylabel=r"Error ($\mathrm{kcal\cdot mol^{-1}}$)",
-    dpi=1200,
-    pdf=False,
+    dpi=600,
     usetex=True,
-    error_statistics_precision=2,
-
+    rcParams={
+        "text.usetex": True,
+        "font.family": "sans-serif",
+        "font.sans-serif": "Helvetica",
+        "mathtext.fontset": "custom",
+    },
+    colors: list = None,
 ) -> None:
     """
-    Plot a violin plot of the data in df. For vals,
-    specify {"output_name": "column_name",}.
-    """
-    print(f"Plotting {pfn}")
-    dbs = list(set(df["DB"].to_list()))
-    dbs = sorted(dbs, key=lambda x: x.lower())
-    vLabels, vData = [], []
+    Create a dataframe with columns of errors pre-computed for generating
+    violin plots with MAE, RMSE, and MaxAE displayed above each violin.
 
+    Args:
+        df: DataFrame with columns of errors 
+        df_labels_and_columns: Dictionary of plotted labels along with the df column for data
+        output_filename: Name of the output file
+        ylim: list =[-15, 35],
+        rcParams: can be set to None if latex is not used
+        colors: list of colors for each df column plotted. A default will alternate between blue and green.
+    """
+    print(f"Plotting {output_filename}")
+    if rcParams is not None:
+        plt.rcParams.update(rcParams)
+    vLabels, vData = [], []
     annotations = []  # [(x, y, text), ...]
     cnt = 1
     plt.rcParams["text.usetex"] = usetex
-    def format_error_statistics(x):
-        return f"{x:.{error_statistics_precision}f}"
-
-    for k, v in vals.items():
+    for k, v in df_labels_and_columns.items():
         df[v] = pd.to_numeric(df[v])
         df_sub = df[df[v].notna()].copy()
         vData.append(df_sub[v].to_list())
@@ -71,11 +81,11 @@ def violin_plot(
         rmse = df_sub[v].apply(lambda x: x**2).mean() ** 0.5
         mae = df_sub[v].apply(lambda x: abs(x)).mean()
         max_error = df_sub[v].apply(lambda x: abs(x)).max()
-        text = r"$\mathit{%s}$" % format_error_statistics(mae)
+        text = r"\textit{%.2f}" % mae
         text += "\n"
-        text += r"$\mathbf{%s}$" % format_error_statistics(rmse)
+        text += r"\textbf{%.2f}" % rmse
         text += "\n"
-        text += r"$\mathrm{%s}$" % format_error_statistics(max_error)
+        text += r"\textrm{%.2f}" % max_error
         annotations.append((cnt, m, text))
         cnt += 1
 
@@ -91,7 +101,6 @@ def violin_plot(
         quantiles=[[0.05, 0.95] for i in range(len(vData))],
         widths=widths,
     )
-    # for partname in ('cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians'):
     for n, partname in enumerate(["cbars", "cmins", "cmaxes", "cmeans"]):
         vp = vplot[partname]
         vp.set_edgecolor("black")
@@ -147,29 +156,24 @@ def violin_plot(
         linewidth=quantile_linewidth,
         label=r"5-95th Percentile",
     )
-    # TODO: fix minor ticks to be between
     navy_blue = (0.0, 0.32, 0.96)
     ax.set_xticks(xs)
-    # minor_yticks = np.arange(ylim[0], ylim[1], 2)
-    # ax.set_yticks(minor_yticks, minor=True)
-
-    plt.setp(ax.set_xticklabels(vLabels), rotation=x_label_rotation, fontsize=x_label_fontsize)
+    plt.setp(
+        ax.set_xticklabels(vLabels),
+        rotation=x_label_rotation,
+        fontsize=x_label_fontsize,
+    )
     ax.set_xlim((0, len(vLabels)))
     if ylim is not None:
         ax.set_ylim(ylim)
-
         minor_yticks = create_minor_y_ticks(ylim)
         ax.set_yticks(minor_yticks, minor=True)
 
     lg = ax.legend(loc="upper left", edgecolor="black", fontsize="8")
-    # lg.get_frame().set_alpha(None)
-    # lg.get_frame().set_facecolor((1, 1, 1, 0.0))
 
     if set_xlable:
         ax.set_xlabel("Level of Theory", color="k")
     ax.set_ylabel(ylabel, color="k")
-    # ax.grid(color="gray", which="major", linewidth=0.5, alpha=0.3)
-    # ax.grid(color="gray", which="minor", linewidth=0.5, alpha=0.3)
 
     ax.grid(color="#54585A", which="major", linewidth=0.5, alpha=0.5, axis="y")
     ax.grid(color="#54585A", which="minor", linewidth=0.5, alpha=0.5)
@@ -189,27 +193,38 @@ def violin_plot(
         xtick.set_color(colors[n - 1])
         xtick.set_alpha(0.8)
 
-    if title_name is not None:
-        plt.title(f"{title_name}")
-    plt.title(f"{title_name}")
+    if plt_title is not None:
+        plt.title(f"{plt_title}")
     fig.subplots_adjust(bottom=bottom)
-
-    if pdf:
-        fn_pdf = f"plots/{pfn}_dbs_violin.pdf"
-        fn_png = f"plots/{pfn}_dbs_violin.png"
-        plt.savefig(
-            fn_pdf, transparent=transparent, bbox_inches="tight", dpi=dpi,
-        )
-        if os.path.exists(fn_png):
-            os.system(f"rm {fn_png}")
-        os.system(f"pdftoppm -png -r 400 {fn_pdf} {fn_png}")
-        if os.path.exists(f"{fn_png}-1.png"):
-            os.system(f"mv {fn_png}-1.png {fn_png}")
-        else:
-            print(f"Error: {fn_png}-1.png does not exist")
-    else:
-        plt.savefig(
-            f"plots/{pfn}_dbs_violin.png", transparent=transparent, bbox_inches="tight", dpi=dpi,
-        )
+    ext = "png"
+    if len(output_filename.split(".")) > 1:
+        ext = output_filename.split(".")[-1]
+    output_basename = os.path.basename(output_filename)
+    plt.savefig(
+        f"{output_path}/{output_basename}_violin.{ext}",
+        transparent=transparent,
+        bbox_inches="tight",
+        dpi=dpi,
+    )
     plt.clf()
     return
+
+
+if __name__ == "__main__":
+    # Fake data generated for example
+    n_samples = 1000
+    mean = 0.5  # replace with your desired mean
+    std_dev = 5  # replace with your desired standard deviation
+    df = pd.DataFrame(
+        {
+            "MP2": std_dev * np.random.randn(n_samples) + mean,
+            "HF": std_dev * np.random.randn(n_samples) - mean,
+            "MP2.5": std_dev * np.random.randn(n_samples) + mean,
+        }
+    )
+    # Only specify columns you want to plot
+    vals = {
+        "MP2 label": "MP2",
+        "HF label": "HF",
+    }
+    violin_plot(df, vals, ylim=[-20, 35], output_filename="example")
