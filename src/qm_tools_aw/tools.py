@@ -688,6 +688,11 @@ def read_psi4_input_molecule_to_df_dimer(file, verbose=False):
         print(monA, monB)
     return geom, Z, charges, monA, monB
 
+def geom_bohr_to_ang(geom):
+    geom[:, 1:] *= qcel.constants.conversion_factor("bohr", "angstrom")
+    return geom
+
+
 
 def read_psi4_input_molecule_to_df(monA_p, monB_p=None):
     if not os.path.exists(monA_p):
