@@ -374,13 +374,15 @@ def read_pickle(fname="data.pickle"):
 def read_xyz_to_pos_carts(
     xyz_path="mol.xyz",
     array_2d=False,
+    charge_mult=False,
 ) -> (np.array, np.array):
     """
     read_xyz_to_pos_carts reads xyz file and returns pos and carts
     """
     el_dc = create_pt_dict()
     with open(xyz_path, "r") as f:
-        d = f.readlines()[2:]
+        data = f.readlines()
+        d = data[2:]
 
     pos, carts = [], []
     for l in d:
@@ -394,8 +396,16 @@ def read_xyz_to_pos_carts(
         carts.append([x, y, z])
     pos = np.array(pos)
     carts = np.array(carts)
-    if array_2d:
+    if charge_mult:
+        cm = data[1].split()
+        cm = [int(cm[0]), int(cm[1])]
+    if array_2d and charge_mult:
+        return np.hstack((pos.reshape(-1, 1), carts)), cm
+    elif array_2d:
         return np.hstack((pos.reshape(-1, 1), carts))
+    elif charge_mult:
+        return pos, carts, cm
+
     return pos, carts
 
 
