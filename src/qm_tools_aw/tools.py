@@ -721,3 +721,20 @@ def read_psi4_input_molecule_to_df(monA_p, monB_p=None):
     else:
         geom, _, c, monA, monB = read_psi4_input_molecule_to_df_dimer(monA_p)
     return geom, monA, monB, c
+
+def closest_intermolecular_contact_dimer(geom, monAs, monBs):
+    monA = geom[monAs]
+    monB = geom[monBs]
+    monA = monA[:, 1:]
+    monB = monB[:, 1:]
+    
+    # Expand dimensions of monA and monB to enable broadcasting
+    monA_exp = monA[:, np.newaxis, :]
+    monB_exp = monB[np.newaxis, :, :]
+    
+    # Calculate pairwise distances using broadcasting and then np.linalg.norm
+    dists = np.linalg.norm(monA_exp - monB_exp, axis=2)
+    
+    # Find the minimum distance
+    min_dist = np.min(dists)
+    return min_dist
