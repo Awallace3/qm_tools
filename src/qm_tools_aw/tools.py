@@ -352,12 +352,12 @@ def write_cartesians_to_xyz(
     with open(fn, "w") as f:
         cm = ""
         if charge_multiplicity is not None and charge and multiplicty:
-            cm = f"{charge_multiplicity[0]} {charge_multiplicity[1]}\n"
+            cm = f"{charge_multiplicity[0]} {charge_multiplicity[1]}"
         elif charge_multiplicity is not None and charge:
             # Targetting xyz2mol reading charge to RDKit molecule
-            cm = f"charge={charge_multiplicity[0]}\n"
+            cm = f"charge={charge_multiplicity[0]}"
         elif charge_multiplicity is not None and multiplicty:
-            cm = f"multiplicity={charge_multiplicity[1]}\n"
+            cm = f"multiplicity={charge_multiplicity[1]}"
         start = f"{len(pos)}\n{cm}\n"
         out += start
         f.write(start)
