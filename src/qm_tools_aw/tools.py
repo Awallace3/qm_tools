@@ -339,7 +339,8 @@ def carts_to_xyz(pos: np.array, carts: np.array, el_dc=create_el_num_to_symbol()
 
 
 def write_cartesians_to_xyz(
-    pos: np.array, carts: np.array, fn="out.xyz", charge_multiplicity=None
+    pos: np.array, carts: np.array, fn="out.xyz", charge_multiplicity=None, 
+    charge_only=False, charge_multiplicity=False,
 ):
     """
     creates xyz file from pos and carts
@@ -348,8 +349,11 @@ def write_cartesians_to_xyz(
     out = ""
     with open(fn, "w") as f:
         cm = ""
-        if charge_multiplicity is not None:
+        if charge_multiplicity is not None and charge_multiplicity:
             cm = f"{charge_multiplicity[0]} {charge_multiplicity[1]}\n"
+        elif charge_multiplicity is not None and charge_only:
+            # Targetting xyz2mol reading charge to RDKit molecule
+            cm = f"charge={charge_multiplicity[0]}\n"
         start = f"{len(pos)}\n{cm}\n"
         out += start
         f.write(start)
