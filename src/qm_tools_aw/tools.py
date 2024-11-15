@@ -86,6 +86,11 @@ def generate_p4input_from_df(
     units="angstrom",
     extra=None,  # ="symmetry c1\nno_reorient\n no_com"
 ):
+    if isinstance(geometry, list):
+        geometry = np.array(geometry)
+        monAs = np.array(monAs).flatten()
+        if monBs is not None:
+            monBs = np.array(monBs).flatten()
     if monBs is not None:
         ma, mb = [], []
         for i in monAs:
