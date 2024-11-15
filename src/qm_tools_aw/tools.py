@@ -344,7 +344,10 @@ def carts_to_xyz(pos: np.array, carts: np.array, el_dc=create_el_num_to_symbol()
 
 
 def write_cartesians_to_xyz(
-    pos: np.array, carts: np.array, fn="out.xyz", charge_multiplicity=None
+    pos: np.array, carts: np.array, fn="out.xyz", 
+    charge_multiplicity=None, 
+    charge=False, 
+    multiplicty=False,
 ):
     """
     creates xyz file from pos and carts
@@ -353,8 +356,13 @@ def write_cartesians_to_xyz(
     out = ""
     with open(fn, "w") as f:
         cm = ""
-        if charge_multiplicity is not None:
-            cm = f"{charge_multiplicity[0]} {charge_multiplicity[1]}\n"
+        if charge_multiplicity is not None and charge and multiplicty:
+            cm = f"{charge_multiplicity[0]} {charge_multiplicity[1]}"
+        elif charge_multiplicity is not None and charge:
+            # Targetting xyz2mol reading charge to RDKit molecule
+            cm = f"charge={charge_multiplicity[0]}"
+        elif charge_multiplicity is not None and multiplicty:
+            cm = f"multiplicity={charge_multiplicity[1]}"
         start = f"{len(pos)}\n{cm}\n"
         out += start
         f.write(start)
@@ -726,3 +734,20 @@ def read_psi4_input_molecule_to_df(monA_p, monB_p=None):
     else:
         geom, _, c, monA, monB = read_psi4_input_molecule_to_df_dimer(monA_p)
     return geom, monA, monB, c
+
+def closest_intermolecular_contact_dimer(geom, monAs, monBs):
+    monA = geom[monAs]
+    monB = geom[monBs]
+    monA = monA[:, 1:]
+    monB = monB[:, 1:]
+    
+    # Expand dimensions of monA and monB to enable broadcasting
+    monA_exp = monA[:, np.newaxis, :]
+    monB_exp = monB[np.newaxis, :, :]
+    
+    # Calculate pairwise distances using broadcasting and then np.linalg.norm
+    dists = np.linalg.norm(monA_exp - monB_exp, axis=2)
+    
+    # Find the minimum distance
+    min_dist = np.min(dists)
+    return min_dist
