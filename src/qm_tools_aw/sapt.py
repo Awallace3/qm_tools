@@ -131,7 +131,7 @@ def compute_sapt_terms(df, sapt_alpha=None):
 
     x = [0.66, 'SAPT SAME-SPIN EXCH-DISP20 ENERGY', 'SAPT SAME-SPIN DISP20 ENERGY', 1.2, 'SAPT EXCH-DISP20 ENERGY', 'SAPT DISP20 ENERGY']
     if set([i for i in x if type(i) == str]).issubset(df.columns):
-        df['SCS-SAPT0 DISP ENERGY'] = df.apply(lambda r: (r[x[0]] - r[x[3]]) * (r[x[1]] + r[x[2]]) + r[x[3]] * (r[x[4]] + r[x[5]]), axis=1)
+        df['SCS-SAPT0 DISP ENERGY'] = df.apply(lambda r: (x[0] - x[3]) * (r[x[1]] + r[x[2]]) + x[3] * (r[x[4]] + r[x[5]]), axis=1)
 
     x = ['SCS-SAPT0 ELST ENERGY', 'SCS-SAPT0 EXCH ENERGY', 'SCS-SAPT0 IND ENERGY', 'SCS-SAPT0 DISP ENERGY']
     if set([i for i in x if type(i) == str]).issubset(df.columns):

@@ -6,6 +6,7 @@ import pandas as pd
 import json
 import subprocess
 import os
+from pathlib import Path
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -751,3 +752,60 @@ def closest_intermolecular_contact_dimer(geom, monAs, monBs):
     # Find the minimum distance
     min_dist = np.min(dists)
     return min_dist
+
+
+def mol_to_pdb_for_pymol_visualization_energy(mol, pairs, output_pdb_path, create_pml_script=False, execute_pml_script=False, bounds=None, monomers=False):
+    geom, pD, cD, ma, mb, charges = mol_to_pos_carts_ma_mb(mol)
+    pairs_A = np.sum(pairs, axis=1) / 2
+    pairs_B = np.sum(pairs, axis=0) / 2
+    atom_energies = np.concatenate([pairs_A, pairs_B])
+    with open(output_pdb_path, "w") as f:
+        for n, r, a in zip(range(len(geom)), geom, atom_energies):
+            atom_type = qcel.periodictable.to_E(r[0])
+            x_coord, y_coord, z_coord = r[1:]
+            f.write(f'HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n')
+    if monomers:
+        with open(output_pdb_path.replace(".pdb", "_monA.pdb"), "w") as f:
+            for n, r, a in zip(range(len(ma)), geom[ma], atom_energies[ma]):
+                atom_type = qcel.periodictable.to_E(r[0])
+                x_coord, y_coord, z_coord = r[1:]
+                f.write(f'HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n')
+        with open(output_pdb_path.replace(".pdb", "_monB.pdb"), "w") as f:
+            for n, r, a in zip(range(len(mb)), geom[mb], atom_energies[mb]):
+                atom_type = qcel.periodictable.to_E(r[0])
+                x_coord, y_coord, z_coord = r[1:]
+                f.write(f'HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n')
+    pml_script_path = output_pdb_path.replace(".pdb", ".pml")
+    if create_pml_script:
+        if bounds is None:
+            bounds = [np.min(atom_energies), np.max(atom_energies)]
+            # get indices of min and max
+        pml_script = f"""
+load {output_pdb_path}
+color grey, elem c
+label all, elem
+show spheres,*
+set sphere_scale, 0.20
+show stick,*
+set_bond stick_radius, 0.15, v.
+set stick_h_scale,1
+zoom center,6
+center v.
+rotate x, 25
+set ray_opaque_background, off
+set opaque_background, off
+set label_color, black
+label all, "%s,%.2f" % (elem, b)
+
+spectrum b, red_white_blue, minimum = {bounds[0]}, maximum = {bounds[1]}
+
+ray 2000,2000
+png {output_pdb_path.replace(".pdb", ".png")}, dpi=400
+"""
+        with open(pml_script_path, "w") as f:
+            f.write(pml_script)
+    if execute_pml_script:
+        os.system(
+            f"pymol -c {pml_script_path}"
+        )
+    return
