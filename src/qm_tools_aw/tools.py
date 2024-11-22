@@ -754,7 +754,7 @@ def closest_intermolecular_contact_dimer(geom, monAs, monBs):
     return min_dist
 
 
-def mol_to_pdb_for_pymol_visualization_energy(mol, pairs, output_pdb_path, create_pml_script=False, execute_pml_script=False, bounds=None, monomers=False):
+def mol_to_pdb_for_pymol_visualization_energy(mol, pairs, output_pdb_path, create_pml_script=False, execute_pml_script=False, bounds=None, monomers=False, bg_color=None):
     geom, pD, cD, ma, mb, charges = mol_to_pos_carts_ma_mb(mol)
     pairs_A = np.sum(pairs, axis=1) / 2
     pairs_B = np.sum(pairs, axis=0) / 2
@@ -780,6 +780,11 @@ def mol_to_pdb_for_pymol_visualization_energy(mol, pairs, output_pdb_path, creat
         if bounds is None:
             bounds = [np.min(atom_energies), np.max(atom_energies)]
             # get indices of min and max
+
+        if bg_color is not None:
+            bg_color = f"bg {bg_color}"
+        else:
+            bg_color = ""
         pml_script = f"""
 load {output_pdb_path}
 color grey, elem c
@@ -796,6 +801,7 @@ set ray_opaque_background, off
 set opaque_background, off
 set label_color, black
 label all, "%s,%.2f" % (elem, b)
+{bg_color}
 
 spectrum b, red_white_blue, minimum = {bounds[0]}, maximum = {bounds[1]}
 
