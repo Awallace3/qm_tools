@@ -1,12 +1,10 @@
 import pickle
 import numpy as np
-from periodictable import elements
+from .periodictable import create_pt_dict, create_el_num_to_symbol
 import qcelemental as qcel
-import pandas as pd
 import json
 import subprocess
 import os
-from pathlib import Path
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -23,10 +21,6 @@ def dict_to_json(d: dict, fn: str):
     return
 
 
-# def json_to_dict(fn: str):
-#     with open(fn, "r") as f:
-#         d = json.load(f, cls=NumpyEncoder)
-#     return d
 def json_to_dict(fn: str, return_numpy=False):
     if not os.path.exists(fn):
         return None
@@ -46,26 +40,6 @@ def save_pkl(file_name, obj):
 def load_pkl(file_name):
     with open(file_name, "rb") as fobj:
         return pickle.load(fobj)
-
-
-def create_pt_dict():
-    """
-    create_pt_dict creates dictionary for string elements to atomic number.
-    """
-    el_dc = {}
-    for el in elements:
-        el_dc[el.symbol] = el.number
-    return el_dc
-
-
-def create_el_num_to_symbol():
-    """
-    create_pt_dict creates dictionary for string elements to atomic number.
-    """
-    el_dc = {}
-    for el in elements:
-        el_dc[el.number] = el.symbol
-    return el_dc
 
 
 def np_carts_to_string(carts):
@@ -345,9 +319,11 @@ def carts_to_xyz(pos: np.array, carts: np.array, el_dc=create_el_num_to_symbol()
 
 
 def write_cartesians_to_xyz(
-    pos: np.array, carts: np.array, fn="out.xyz", 
-    charge_multiplicity=None, 
-    charge=False, 
+    pos: np.array,
+    carts: np.array,
+    fn="out.xyz",
+    charge_multiplicity=None,
+    charge=False,
     multiplicty=False,
 ):
     """
@@ -507,13 +483,6 @@ def convert_geom_str_to_dimer_splits(
         print("Type not supported")
         return []
 
-# def psi4_mol_to_grac_shift_mols(
-#     mol,
-# ) -> []:
-#     m = 1
-#     mol_a = mol.
-#     return
-
 
 def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
     cD = mol.geometry
@@ -535,8 +504,6 @@ def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
 
 
 def mol_qcdb_to_pos_carts_ma_mb(mol, units_angstroms=True):
-    from psi4.driver import qcdb
-
     p4_input = mol.format_molecule_for_psi4()
     p4_input = "\n".join(p4_input.split("\n")[1:-2])
     geom = mol.format_molecule_for_numpy()
@@ -642,7 +609,6 @@ def read_psi4_input_file_molecule(input_path):
         if "mol" in l:
             start = True
         elif "}" in l:
-            end = n
             break
         elif start:
             geom.append(l)
@@ -712,10 +678,10 @@ def read_psi4_input_molecule_to_df_dimer(file, verbose=False):
         print(monA, monB)
     return geom, Z, charges, monA, monB
 
+
 def geom_bohr_to_ang(geom):
     geom[:, 1:] *= qcel.constants.conversion_factor("bohr", "angstrom")
     return geom
-
 
 
 def read_psi4_input_molecule_to_df(monA_p, monB_p=None):
@@ -736,25 +702,35 @@ def read_psi4_input_molecule_to_df(monA_p, monB_p=None):
         geom, _, c, monA, monB = read_psi4_input_molecule_to_df_dimer(monA_p)
     return geom, monA, monB, c
 
+
 def closest_intermolecular_contact_dimer(geom, monAs, monBs):
     monA = geom[monAs]
     monB = geom[monBs]
     monA = monA[:, 1:]
     monB = monB[:, 1:]
-    
+
     # Expand dimensions of monA and monB to enable broadcasting
     monA_exp = monA[:, np.newaxis, :]
     monB_exp = monB[np.newaxis, :, :]
-    
+
     # Calculate pairwise distances using broadcasting and then np.linalg.norm
     dists = np.linalg.norm(monA_exp - monB_exp, axis=2)
-    
+
     # Find the minimum distance
     min_dist = np.min(dists)
     return min_dist
 
 
-def mol_to_pdb_for_pymol_visualization_energy(mol, pairs, output_pdb_path, create_pml_script=False, execute_pml_script=False, bounds=None, monomers=False, bg_color=None):
+def mol_to_pdb_for_pymol_visualization_energy(
+    mol,
+    pairs,
+    output_pdb_path,
+    create_pml_script=False,
+    execute_pml_script=False,
+    bounds=None,
+    monomers=False,
+    bg_color=None,
+):
     geom, pD, cD, ma, mb, charges = mol_to_pos_carts_ma_mb(mol)
     pairs_A = np.sum(pairs, axis=1) / 2
     pairs_B = np.sum(pairs, axis=0) / 2
@@ -763,18 +739,24 @@ def mol_to_pdb_for_pymol_visualization_energy(mol, pairs, output_pdb_path, creat
         for n, r, a in zip(range(len(geom)), geom, atom_energies):
             atom_type = qcel.periodictable.to_E(r[0])
             x_coord, y_coord, z_coord = r[1:]
-            f.write(f'HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n')
+            f.write(
+                f"HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
+            )
     if monomers:
         with open(output_pdb_path.replace(".pdb", "_monA.pdb"), "w") as f:
             for n, r, a in zip(range(len(ma)), geom[ma], atom_energies[ma]):
                 atom_type = qcel.periodictable.to_E(r[0])
                 x_coord, y_coord, z_coord = r[1:]
-                f.write(f'HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n')
+                f.write(
+                    f"HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
+                )
         with open(output_pdb_path.replace(".pdb", "_monB.pdb"), "w") as f:
             for n, r, a in zip(range(len(mb)), geom[mb], atom_energies[mb]):
                 atom_type = qcel.periodictable.to_E(r[0])
                 x_coord, y_coord, z_coord = r[1:]
-                f.write(f'HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n')
+                f.write(
+                    f"HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
+                )
     pml_script_path = output_pdb_path.replace(".pdb", ".pml")
     if create_pml_script:
         if bounds is None:
@@ -811,7 +793,5 @@ png {output_pdb_path.replace(".pdb", ".png")}, dpi=400
         with open(pml_script_path, "w") as f:
             f.write(pml_script)
     if execute_pml_script:
-        os.system(
-            f"pymol -c {pml_script_path}"
-        )
+        os.system(f"pymol -c {pml_script_path}")
     return
