@@ -1,14 +1,16 @@
 import numpy as np
 import qcelemental as qcel
 import os
+from pathlib import Path
 
 
 def run_checkmol(mol_file, checkmol_path='checkmol'):
     """Runs Checkmol on a given MOL file and returns the output file path."""
-    mol_base_path = mol_file.split(".")[0]
-    filename = mol_file.split("/")[-1]
-    checkmol_file = mol_base_path + ".checkmol"
-    os.system(f"{checkmol_path} -vxpe {mol_base_path + filename} > {checkmol_file}")
+    p = Path(mol_file)
+    mol_base_path = p.parent / p.stem
+    print(mol_base_path)
+    checkmol_file = str(mol_base_path) +  ".checkmol"
+    os.system(f"{checkmol_path} -vxpe {mol_file} > {checkmol_file}")
     return checkmol_file
 
 
