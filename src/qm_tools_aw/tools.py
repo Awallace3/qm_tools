@@ -129,6 +129,22 @@ def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
     return mol
 
 
+def convert_ap_row_to_mol(r, n_mer=1) -> qcel.models.Molecule:
+    """
+    convert_schr_row_to_mol
+    """
+    if n_mer == 1:
+        m1 = f"{r['TQ']} 1\n"
+        m1 += print_cartesians_pos_carts(r['Z'], r['R'], only_results=True)
+        # m1 += "\nunits angstrom"
+        mol = qcel.models.Molecule.from_data(m1)
+    elif n_mer == 2:
+        convert_schr_row_to_mol(r)
+    else:
+        raise ValueError("n_mer must be 1 or 2")
+    return mol
+
+
 def convert_pos_carts_to_mol(pos, carts):
     m1 = ""
     for i in range(len(pos)):
