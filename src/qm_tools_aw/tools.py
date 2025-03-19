@@ -56,14 +56,15 @@ def np_carts_to_string(carts):
 def generate_p4input_from_df(
     geometry,
     charges,
-    monAs,
+    monAs=None,
     monBs=None,
     units="angstrom",
     extra=None,  # ="symmetry c1\nno_reorient\n no_com"
 ):
     if isinstance(geometry, list):
         geometry = np.array(geometry)
-        monAs = np.array(monAs).flatten()
+        if monAs is not None:
+            monAs = np.array(monAs).flatten()
         if monBs is not None:
             monBs = np.array(monBs).flatten()
     if monBs is not None:
