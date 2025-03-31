@@ -56,14 +56,15 @@ def np_carts_to_string(carts):
 def generate_p4input_from_df(
     geometry,
     charges,
-    monAs,
+    monAs=None,
     monBs=None,
     units="angstrom",
     extra=None,  # ="symmetry c1\nno_reorient\n no_com"
 ):
     if isinstance(geometry, list):
         geometry = np.array(geometry)
-        monAs = np.array(monAs).flatten()
+        if monAs is not None:
+            monAs = np.array(monAs).flatten()
         if monBs is not None:
             monBs = np.array(monBs).flatten()
     if monBs is not None:
@@ -126,6 +127,22 @@ def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
     m2 = f"{r['charges'][2][0]} {r['charges'][2][1]}\n"
     m2 += print_cartesians_pos_carts(g2[:, 0], g2[:, 1:], only_results=True)
     mol = qcel.models.Molecule.from_data(m1 + "--\n" + m2)
+    return mol
+
+
+def convert_ap_row_to_mol(r, n_mer=1) -> qcel.models.Molecule:
+    """
+    convert_schr_row_to_mol
+    """
+    if n_mer == 1:
+        m1 = f"{r['TQ']} 1\n"
+        m1 += print_cartesians_pos_carts(r['Z'], r['R'], only_results=True)
+        # m1 += "\nunits angstrom"
+        mol = qcel.models.Molecule.from_data(m1)
+    elif n_mer == 2:
+        convert_schr_row_to_mol(r)
+    else:
+        raise ValueError("n_mer must be 1 or 2")
     return mol
 
 
