@@ -5,6 +5,7 @@ import qcelemental as qcel
 import json
 import subprocess
 import os
+import re
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -796,3 +797,35 @@ png {output_pdb_path.replace(".pdb", ".png")}, dpi=400
     if execute_pml_script:
         os.system(f"pymol -c {pml_script_path}")
     return
+
+
+def parse_fisapt0_output(filename):
+    """
+    parse_fisapt0_output parses the output of a FISAPT0 calculation and returns a dictionary.
+    Returns energy values in kcal/mol.
+    """
+    with open(filename, 'r') as f:
+        content = f.read()
+    # Extract the relevant energies using regex
+    energy_dict = {"ELST": None, "EXCH": None, "INDU": None, "DISP": None, "TOTAL": None}
+    patterns = {
+        "ELST": r"Electrostatics\s+([-+]?\d*\.\d+|\d+)",
+        "EXCH": r"Exchange\s+([-+]?\d*\.\d+|\d+)",
+        "INDU": r"Induction\s+([-+]?\d*\.\d+|\d+)",
+        "DISP": r"Dispersion\s+([-+]?\d*\.\d+|\d+)",
+        "TOTAL": r"Total SAPT0\s+([-+]?\d*\.\d+|\d+)"
+    }
+    for key, pattern in patterns.items():
+        match = re.search(pattern, content)
+        if match:
+            # Extract the value and convert to float
+            value_str = match.group(1).strip()
+            try:
+                energy_dict[key] = float(value_str) * qcel.constants.conversion_factor("mEh", "kcal/mol")
+            except ValueError:
+                print(f"Could not convert {value_str} to float for {key}.")
+        else:
+            print(f"Pattern for {key} not found in the output file.")
+    return energy_dict
+
+
