@@ -9,6 +9,13 @@ import re
 
 
 class NumpyEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for handling NumPy arrays.
+
+    Extends the default JSON encoder to properly serialize NumPy arrays
+    by converting them to Python lists.
+    """
+
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -16,6 +23,20 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def dict_to_json(d: dict, fn: str):
+    """
+    Save a dictionary to a JSON file with support for NumPy arrays.
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary to save
+    fn : str
+        File path where the JSON will be saved
+
+    Returns
+    -------
+    None
+    """
     with open(fn, "w") as f:
         json_dump = json.dumps(d, indent=4, cls=NumpyEncoder)
         f.write(json_dump)
@@ -23,6 +44,21 @@ def dict_to_json(d: dict, fn: str):
 
 
 def json_to_dict(fn: str, return_numpy=False):
+    """
+    Load a dictionary from a JSON file with option to convert lists to NumPy arrays.
+
+    Parameters
+    ----------
+    fn : str
+        Path to the JSON file
+    return_numpy : bool, optional
+        If True, convert any lists to NumPy arrays
+
+    Returns
+    -------
+    dict or None
+        The loaded dictionary, or None if the file doesn't exist
+    """
     if not os.path.exists(fn):
         return None
     with open(fn, "r") as f:
@@ -34,16 +70,56 @@ def json_to_dict(fn: str, return_numpy=False):
 
 
 def save_pkl(file_name, obj):
+    """
+    Save an object to a pickle file.
+
+    Parameters
+    ----------
+    file_name : str
+        Path where the pickle file will be saved
+    obj : object
+        Any Python object to be pickled
+
+    Returns
+    -------
+    None
+    """
     with open(file_name, "wb") as fobj:
         pickle.dump(obj, fobj)
 
 
 def load_pkl(file_name):
+    """
+    Load an object from a pickle file.
+
+    Parameters
+    ----------
+    file_name : str
+        Path to the pickle file
+
+    Returns
+    -------
+    object
+        The unpickled object
+    """
     with open(file_name, "rb") as fobj:
         return pickle.load(fobj)
 
 
 def np_carts_to_string(carts):
+    """
+    Convert atomic numbers and Cartesian coordinates to a formatted string.
+
+    Parameters
+    ----------
+    carts : numpy.ndarray
+        Array where each row is [atomic_number, x, y, z]
+
+    Returns
+    -------
+    str
+        Formatted string with atomic numbers and coordinates
+    """
     w = ""
     for n, r in enumerate(carts):
         e, x, y, z = r
@@ -62,6 +138,34 @@ def generate_p4input_from_df(
     units="angstrom",
     extra=None,  # ="symmetry c1\nno_reorient\n no_com"
 ):
+    """
+    Generate Psi4 input format from molecular geometry data.
+
+    Parameters
+    ----------
+    geometry : numpy.ndarray or list
+        Array where each row is [atomic_number, x, y, z]
+    charges : list or numpy.ndarray
+        Charge and multiplicity information
+    monAs : numpy.ndarray or list, optional
+        Indices for the first monomer
+    monBs : numpy.ndarray or list, optional
+        Indices for the second monomer
+    units : str, optional
+        Units for coordinates, either "angstrom" or "bohr"
+    extra : str, optional
+        Additional Psi4 input commands
+
+    Returns
+    -------
+    str
+        Formatted Psi4 input string
+
+    Raises
+    ------
+    ValueError
+        If units are not "angstrom" or "bohr"
+    """
     if isinstance(geometry, list):
         geometry = np.array(geometry)
         if monAs is not None:
@@ -99,6 +203,26 @@ def generate_p4input_from_df(
 
 
 def generate_mol_from_df_row_tl(d1, units="angstrom"):
+    """
+    Generate a QCElemental Molecule from a row in a DataFrame.
+
+    Parameters
+    ----------
+    d1 : dict or pandas.Series
+        Row data containing 'RA', 'RB', and 'charges' keys
+    units : str, optional
+        Units for coordinates, either "angstrom" or "bohr"
+
+    Returns
+    -------
+    qcelemental.models.Molecule
+        Molecule object
+
+    Raises
+    ------
+    ValueError
+        If units are not "angstrom" or "bohr"
+    """
     ma = d1["RA"]
     mb = d1["RB"]
     ma = np_carts_to_string(ma)
@@ -119,7 +243,17 @@ def generate_mol_from_df_row_tl(d1, units="angstrom"):
 
 def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
     """
-    convert_schr_row_to_mol
+    Convert a Schrödinger-format row to a QCElemental Molecule.
+
+    Parameters
+    ----------
+    r : dict
+        Row data containing 'monAs', 'monBs', 'Geometry', and 'charges' keys
+
+    Returns
+    -------
+    qcelemental.models.Molecule
+        Molecule object
     """
     ma, mb = r["monAs"], r["monBs"]
     g1, g2 = r["Geometry"][ma], r["Geometry"][mb]
@@ -131,7 +265,56 @@ def convert_schr_row_to_mol(r) -> qcel.models.Molecule:
     return mol
 
 
+def convert_ap_row_to_mol(r, n_mer=1) -> qcel.models.Molecule:
+    """
+    Convert an AP-format row to a QCElemental Molecule.
+
+    Parameters
+    ----------
+    r : dict
+        Row data with 'TQ', 'Z', and 'R' keys for monomer (n_mer=1)
+        or appropriate dimer keys for n_mer=2
+    n_mer : int, optional
+        Number of monomers (1 or 2)
+
+    Returns
+    -------
+    qcelemental.models.Molecule
+        Molecule object
+
+    Raises
+    ------
+    ValueError
+        If n_mer is not 1 or 2
+    """
+    if n_mer == 1:
+        m1 = f"{r['TQ']} 1\n"
+        m1 += print_cartesians_pos_carts(r["Z"], r["R"], only_results=True)
+        # m1 += "\nunits angstrom"
+        mol = qcel.models.Molecule.from_data(m1)
+    elif n_mer == 2:
+        convert_schr_row_to_mol(r)
+    else:
+        raise ValueError("n_mer must be 1 or 2")
+    return mol
+
+
 def convert_pos_carts_to_mol(pos, carts):
+    """
+    Convert atomic positions and Cartesian coordinates to a QCElemental Molecule.
+
+    Parameters
+    ----------
+    pos : list of numpy.ndarray
+        List of arrays with atomic numbers
+    carts : list of numpy.ndarray
+        List of arrays with Cartesian coordinates
+
+    Returns
+    -------
+    qcelemental.models.Molecule
+        Molecule object
+    """
     m1 = ""
     for i in range(len(pos)):
         if i > 0:
@@ -143,6 +326,19 @@ def convert_pos_carts_to_mol(pos, carts):
 
 
 def string_carts_to_np(geom):
+    """
+    Convert a geometry string to NumPy arrays of positions, charges, and monomer indices.
+
+    Parameters
+    ----------
+    geom : str
+        Geometry string in a format similar to Psi4 input
+
+    Returns
+    -------
+    tuple
+        (geometry_array, charges_array, monomer_A_indices, monomer_B_indices)
+    """
     geom = geom.split("\n")
     if geom[0] == "":
         geom = geom[1:]
@@ -202,7 +398,24 @@ def string_carts_to_np(geom):
 
 def print_cartesians(arr, symbols=False):
     """
-    prints a 2-D numpy array in a nicer format
+    Print a 2-D array of molecular coordinates in a formatted way.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        Array where each row is [atomic_number, x, y, z]
+    symbols : bool, optional
+        If True, convert atomic numbers to element symbols
+
+    Returns
+    -------
+    str
+        Formatted string of the coordinates
+
+    Raises
+    ------
+    ValueError
+        If array shape is not Nx4
     """
     shape = np.shape(arr)
     if shape[1] != 4:
@@ -226,9 +439,22 @@ def print_cartesians(arr, symbols=False):
 
 def print_cartesians_dimer(geom, monAs, monBs, charges) -> str:
     """
-    print_cartesians_dimer takes in dimer geometry and splits
-    by monAs and monBs slicing to produce monomers. The
-    charges are mult and charge.
+    Print dimer geometry with separation by monomers.
+
+    Parameters
+    ----------
+    geom : numpy.ndarray
+        Array where each row is [atomic_number, x, y, z]
+    monAs : list or numpy.ndarray
+        Indices for the first monomer
+    monBs : list or numpy.ndarray
+        Indices for the second monomer
+    charges : list or numpy.ndarray
+        Charge and multiplicity information for the dimer
+
+    Returns
+    -------
+    None
     """
     m1 = geom[monAs]
     m2 = geom[monBs]
@@ -245,7 +471,23 @@ def print_cartesians_pos_carts(
     pos: np.array, carts: np.array, only_results=False, el_attach=None
 ):
     """
-    prints a 2-D numpy array in a nicer format
+    Print atomic numbers and Cartesian coordinates in a formatted way.
+
+    Parameters
+    ----------
+    pos : numpy.ndarray
+        Array of atomic numbers
+    carts : numpy.ndarray
+        Array of Cartesian coordinates
+    only_results : bool, optional
+        If True, only return the string without printing
+    el_attach : str, optional
+        String to attach to each element
+
+    Returns
+    -------
+    str
+        Formatted string of the coordinates
     """
     if not only_results:
         print()
@@ -272,7 +514,25 @@ def print_cartesians_pos_carts_symbols(
     el_dc=create_el_num_to_symbol(),
 ):
     """
-    prints a 2-D numpy array in a nicer format
+    Print element symbols and Cartesian coordinates in a formatted way.
+
+    Parameters
+    ----------
+    pos : numpy.ndarray
+        Array of atomic numbers
+    carts : numpy.ndarray
+        Array of Cartesian coordinates
+    only_results : bool, optional
+        If True, only return the string without printing
+    el_attach : str, optional
+        String to attach to each element
+    el_dc : dict, optional
+        Dictionary mapping atomic numbers to element symbols
+
+    Returns
+    -------
+    str
+        Formatted string of the coordinates
     """
     if not only_results:
         print()
@@ -291,24 +551,23 @@ def print_cartesians_pos_carts_symbols(
     return lines
 
 
-# def return_cartesians_pos_carts(pos: np.array, carts: np.array):
-#     """
-#     prints a 2-D numpy array in a nicer format
-#     """
-#     print()
-#     lines = ""
-#     for n, r in enumerate(carts):
-#         x, y, z = r
-#         line = "{}\t{:.10f}\t{:.10f}\t{:.10f}".format(int(pos[n]), x, y, z)
-#         lines += line + "\n"
-#         print(line)
-#     print()
-#     return lines
-
-
 def carts_to_xyz(pos: np.array, carts: np.array, el_dc=create_el_num_to_symbol()):
     """
-    creates xyz file from pos and carts
+    Convert atomic numbers and Cartesian coordinates to XYZ file format.
+
+    Parameters
+    ----------
+    pos : numpy.ndarray
+        Array of atomic numbers
+    carts : numpy.ndarray
+        Array of Cartesian coordinates
+    el_dc : dict, optional
+        Dictionary mapping atomic numbers to element symbols
+
+    Returns
+    -------
+    str
+        XYZ file content as a string
     """
     out = ""
     start = f"{len(pos)}\n\n"
@@ -329,7 +588,27 @@ def write_cartesians_to_xyz(
     multiplicty=False,
 ):
     """
-    creates xyz file from pos and carts
+    Write atomic numbers and Cartesian coordinates to an XYZ file.
+
+    Parameters
+    ----------
+    pos : numpy.ndarray
+        Array of atomic numbers
+    carts : numpy.ndarray
+        Array of Cartesian coordinates
+    fn : str, optional
+        Output file name
+    charge_multiplicity : list or tuple, optional
+        [charge, multiplicity] values
+    charge : bool, optional
+        If True, include charge in the comment line
+    multiplicty : bool, optional
+        If True, include multiplicity in the comment line
+
+    Returns
+    -------
+    str
+        XYZ file content as a string
     """
     el_dc = create_el_num_to_symbol()
     out = ""
@@ -354,11 +633,38 @@ def write_cartesians_to_xyz(
 
 
 def write_pickle(data, fname="data.pickle"):
+    """
+    Write data to a pickle file.
+
+    Parameters
+    ----------
+    data : object
+        Data to be pickled
+    fname : str, optional
+        Output file name
+
+    Returns
+    -------
+    None
+    """
     with open(fname, "wb") as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def read_pickle(fname="data.pickle"):
+    """
+    Read data from a pickle file.
+
+    Parameters
+    ----------
+    fname : str, optional
+        Input file name
+
+    Returns
+    -------
+    object
+        Unpickled data
+    """
     with open(fname, "rb") as handle:
         return pickle.load(handle)
 
@@ -369,7 +675,25 @@ def read_xyz_to_pos_carts(
     charge_mult=False,
 ) -> (np.array, np.array):
     """
-    read_xyz_to_pos_carts reads xyz file and returns pos and carts
+    Read an XYZ file and convert to arrays of atomic numbers and coordinates.
+
+    Parameters
+    ----------
+    xyz_path : str, optional
+        Path to the XYZ file
+    array_2d : bool, optional
+        If True, return a single 2D array instead of separate arrays
+    charge_mult : bool, optional
+        If True, also return charge and multiplicity from comment line
+
+    Returns
+    -------
+    tuple
+        Based on parameters:
+        - (pos, carts) if array_2d=False and charge_mult=False
+        - (combined_array) if array_2d=True and charge_mult=False
+        - (pos, carts, [charge, multiplicity]) if array_2d=False and charge_mult=True
+        - (combined_array, [charge, multiplicity]) if array_2d=True and charge_mult=True
     """
     el_dc = create_pt_dict()
     with open(xyz_path, "r") as f:
@@ -406,7 +730,19 @@ def read_geom_to_pos_carts_nmers(
     start=4,
 ) -> [np.ndarray, np.ndarray]:
     """
-    read_xyz_to_pos_carts reads xyz file and returns pos and carts for AP-Net prediction
+    Read geometry file and extract atomic numbers and coordinates for multiple molecules.
+
+    Parameters
+    ----------
+    xyz_path : str, optional
+        Path to the geometry file
+    start : int, optional
+        Line number to start reading from
+
+    Returns
+    -------
+    tuple
+        (positions, cartesians) where each is a list of arrays for each molecule fragment
     """
     el_dc = create_pt_dict()
     with open(xyz_path, "r") as f:
@@ -448,10 +784,25 @@ def convert_geom_str_to_dimer_splits(
     geom, units_angstroms=True
 ) -> [np.array, np.array, np.array, np.array]:
     """
-    convert_str_to_dimer_splits takes in geom as a STRING as a list or single string
-    and makes Molecule objects
+    Convert geometry string to arrays for dimer analysis.
 
-    returning order [ZA, ZB, RA, RB]
+    Parameters
+    ----------
+    geom : str or list
+        Geometry string or list of strings in QCElemental format
+    units_angstroms : bool, optional
+        If True, convert coordinates to Angstroms
+
+    Returns
+    -------
+    list
+        For single geometry: [ZA, ZB, RA, RB, TQA, TQB]
+        For list of geometries: list of [ZA, ZB, RA, RB, TQA, TQB]
+
+        where:
+        - ZA, ZB are atomic numbers for fragments A and B
+        - RA, RB are coordinates for fragments A and B
+        - TQA, TQB are charges for fragments A and B
     """
     m = 1
     if units_angstroms:
@@ -487,6 +838,21 @@ def convert_geom_str_to_dimer_splits(
 
 
 def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
+    """
+    Extract positions, Cartesian coordinates, and monomer indices from a QCElemental Molecule.
+
+    Parameters
+    ----------
+    mol : qcelemental.models.Molecule
+        Molecule object
+    units_angstroms : bool, optional
+        If True, convert coordinates to Angstroms
+
+    Returns
+    -------
+    tuple
+        (geometry, positions, cartesians, monomer_A_indices, monomer_B_indices, charges)
+    """
     cD = mol.geometry
     if units_angstroms:
         cD = cD * qcel.constants.conversion_factor("bohr", "angstrom")
@@ -506,6 +872,21 @@ def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
 
 
 def mol_qcdb_to_pos_carts_ma_mb(mol, units_angstroms=True):
+    """
+    Extract positions, Cartesian coordinates, and monomer indices from a QCDB Molecule.
+
+    Parameters
+    ----------
+    mol : psi4.core.Molecule or similar
+        QCDB-compatible Molecule object
+    units_angstroms : bool, optional
+        If True, convert coordinates to Angstroms
+
+    Returns
+    -------
+    tuple
+        (p4_input, geometry, positions, cartesians, monomer_A_indices, monomer_B_indices, charges)
+    """
     p4_input = mol.format_molecule_for_psi4()
     p4_input = "\n".join(p4_input.split("\n")[1:-2])
     geom = mol.format_molecule_for_numpy()
@@ -742,7 +1123,7 @@ def mol_to_pdb_for_pymol_visualization_energy(
             atom_type = qcel.periodictable.to_E(r[0])
             x_coord, y_coord, z_coord = r[1:]
             f.write(
-                f"HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
+                f"HETATM{n + 1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
             )
     if monomers:
         with open(output_pdb_path.replace(".pdb", "_monA.pdb"), "w") as f:
@@ -750,14 +1131,14 @@ def mol_to_pdb_for_pymol_visualization_energy(
                 atom_type = qcel.periodictable.to_E(r[0])
                 x_coord, y_coord, z_coord = r[1:]
                 f.write(
-                    f"HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
+                    f"HETATM{n + 1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
                 )
         with open(output_pdb_path.replace(".pdb", "_monB.pdb"), "w") as f:
             for n, r, a in zip(range(len(mb)), geom[mb], atom_energies[mb]):
                 atom_type = qcel.periodictable.to_E(r[0])
                 x_coord, y_coord, z_coord = r[1:]
                 f.write(
-                    f"HETATM{n+1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
+                    f"HETATM{n + 1:>5} {atom_type:<2}   001 A   1{x_coord:>12.3f}{y_coord:>8.3f}{z_coord:>8.3f}  1.00{a:>6.2f}{atom_type:>12}\n"
                 )
     pml_script_path = output_pdb_path.replace(".pdb", ".pml")
     if create_pml_script:
