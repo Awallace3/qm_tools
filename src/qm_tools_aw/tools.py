@@ -299,7 +299,10 @@ def convert_ap_row_to_mol(r, n_mer=1) -> qcel.models.Molecule:
     return mol
 
 
-def convert_pos_carts_to_mol(pos, carts):
+def convert_pos_carts_to_mol(pos, carts, charge_multiplicity=[
+    [0, 1],
+    [0, 1],
+]):
     """
     Convert atomic positions and Cartesian coordinates to a QCElemental Molecule.
 
@@ -309,6 +312,7 @@ def convert_pos_carts_to_mol(pos, carts):
         List of arrays with atomic numbers
     carts : list of numpy.ndarray
         List of arrays with Cartesian coordinates
+    charge_multiplicity : list of lists, optional
 
     Returns
     -------
@@ -319,7 +323,7 @@ def convert_pos_carts_to_mol(pos, carts):
     for i in range(len(pos)):
         if i > 0:
             m1 += "--\n"
-        m1 += f"0 1\n"
+        m1 += f"{charge_multiplicity[i][0]} {charge_multiplicity[i][1]}\n"
         m1 += print_cartesians_pos_carts(pos[i], carts[i], only_results=True)
     mol = qcel.models.Molecule.from_data(m1)
     return mol
