@@ -143,7 +143,8 @@ def visualize_molecule(
     if title:
         # compute position for the label to be to the side of the molecule
         title_position = molecule.geometry.mean(axis=0) * qcel.constants.bohr2angstroms
-        title_position[0] += 4.0  # Shift label to the right
+        title_position[1] -= 6.0  # Shift label to the right
+        title_position[0] -= 6.0  # Shift label to the right
         viewer.addLabel(
             title,
             {
@@ -403,7 +404,7 @@ def save_visualization(
     """
 
     if format.lower() == "png":
-        viewer.png(filename)
+        viewer.png()
     elif format.lower() == "html":
         with open(filename, "w") as f:
             f.write(viewer._make_html())
