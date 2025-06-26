@@ -445,21 +445,74 @@ if __name__ == "__main__":
 
 
 def create_latex_table_pymol(
-    filename,
-    df,
+    filename, # latex filename
+    df, # pandas DataFrame with qcel molecules
     df_qcel_column="qcel_molecule",
     df_err_column=None,
     df_id_column="system_id",
     output_directory="mol_viz",
     title_include_id=True,
     visualize=False,
+    zoom=5,
 ):
+    """
+    Create a LaTeX table with PyMOL molecular visualizations.
+    
+    This function generates a LaTeX table that includes molecular visualizations
+    created using PyMOL from the molecular data in the provided DataFrame.
+    
+    Parameters
+    ----------
+    filename : str
+        The name of the output LaTeX file (e.g., 'mol_vis.tex').
+    dataframe : pandas.DataFrame
+        DataFrame containing molecular data with 'qcel_molecule' column
+        and other molecular properties.
+    df_id_column : str
+        The column name in the DataFrame to use as identifiers for the
+        molecular systems (e.g., 'system_id').
+    output_directory : str
+        Directory path where the output files and molecular visualizations
+        will be saved.
+    zoom : float
+        Zoom factor for the PyMOL visualization.
+    title_include_id : bool
+        Whether to include the identifier in the title of each molecule
+        in the LaTeX table.
+    visualize : bool
+        Whether to generate molecular visualizations using PyMOL.
+    df_qcel_column : str
+        The column name in the DataFrame that contains the qcelemental
+        molecule objects (default is 'qcel_molecule').
+    df_err_column : str, optional
+        The column name in the DataFrame that contains error values
+        for each molecule (default is None, meaning no error values are included).
+        
+    Returns
+    -------
+    None
+        The function saves the LaTeX table to the specified filename
+        and molecular visualization files to the output directory.
+        After running this, cd to output_directory and run `bash make-images.sh`
+        followed by `pdflatex filename.tex` to generate the PDF with images.
+    """
     if df_id_column is None and title_include_id:
         print(
             "Warning: df_id_column is None, but title_include_id is True. Setting title_include_id to False."
         )
         title_include_id = False
-    with open(filename, "w") as tex:
+    with open(f"./{output_directory}/{filename}", "w") as tex:
+        tex.write(r"""
+\documentclass{article}
+\usepackage{longtable}
+\usepackage{adjustbox} % For adjusting image sizes, needed for ion-table
+\usepackage{makecell}
+\usepackage{setspace}
+\usepackage[margin=1in,footskip=0.25in]{geometry}
+
+\begin{document}
+\begin{longtable}{|c|c|c|c|}
+""")
         set_of_four = []
         cnt = 0
         for i, row in df.iterrows():
@@ -486,7 +539,7 @@ def create_latex_table_pymol(
                     .replace("_", "\\_")
                     .replace("[", "\\[")
                     .replace("]", "\\]"),
-                    f"./{output_directory}/{row[df_id_column]}.png",
+                    f"./{row[df_id_column]}.png",
                     error_value,
                 ]
             )
@@ -532,6 +585,11 @@ def create_latex_table_pymol(
                 set_of_four = []
                 cnt = 0
 
+        tex.write(r"""
+\end{longtable}
+
+\end{document}
+""")
     make_images = f"./{output_directory}/make-images.sh"
     with open(make_images, "w") as f:
         f.write("""#!/bin/bash
@@ -546,7 +604,7 @@ do
 	# rm "$file"-script.pml
 done""")
     with open(f"./{output_directory}/script.pml", "w") as f:
-        f.write("""
+        f.write(f"""
 load INSERT.xyz
 
 color grey, elem c
@@ -556,7 +614,7 @@ set sphere_scale, 0.25
 show stick,*
 set_bond stick_radius, 0.2, v.
 set stick_h_scale,1
-zoom center,5
+zoom center,{zoom}
 center v.
 rotate x, 5
 set ray_opaque_background, off
