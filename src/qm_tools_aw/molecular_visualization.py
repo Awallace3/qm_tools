@@ -442,3 +442,127 @@ if __name__ == "__main__":
         spin={"axis": "x", "frequency": 0.1},
     )
     viewer2.show()
+
+
+def create_latex_table_pymol(
+    filename,
+    df,
+    df_qcel_column="qcel_molecule",
+    df_err_column=None,
+    df_id_column="system_id",
+    output_directory="mol_viz",
+    title_include_id=True,
+    visualize=False,
+):
+    if df_id_column is None and title_include_id:
+        print(
+            "Warning: df_id_column is None, but title_include_id is True. Setting title_include_id to False."
+        )
+        title_include_id = False
+    with open(filename, "w") as tex:
+        set_of_four = []
+        cnt = 0
+        for i, row in df.iterrows():
+            error_value = ""
+            if df_err_column:
+                error_value = f",Err={row[df_err_column]:.2f} kcal/mol"
+            if title_include_id:
+                title = f"{i},{row[df_id_column]}{error_value}"
+            else:
+                title = f"{i}{error_value}"
+            if visualize:
+                visualize_molecule(
+                    row["qcel_molecule"],
+                    style="ball_and_stick",
+                    title=title,
+                    temp_filename=f"./{output_directory}/{row['system_id']}.html",
+                )
+            xyz = row["qcel_molecule"].to_string("xyz")
+            with open(f"./{output_directory}/{row[df_id_column]}.xyz", "w") as f:
+                f.write(xyz)
+            set_of_four.append(
+                [
+                    row[df_id_column]
+                    .replace("_", "\\_")
+                    .replace("[", "\\[")
+                    .replace("]", "\\]"),
+                    f"./{output_directory}/{row[df_id_column]}.png",
+                    error_value,
+                ]
+            )
+            cnt += 1
+            if cnt == 4:
+                tex.write(
+                    "\\adjustbox{valign=t}{\\includegraphics[width=0.22\\textwidth]{"
+                    + set_of_four[0][1]
+                    + "}}& "
+                    + "\\adjustbox{valign=t}{\\includegraphics[width=0.22\\textwidth]{"
+                    + set_of_four[1][1]
+                    + "}} & "
+                    + "\\adjustbox{valign=t}{\\includegraphics[width=0.22\\textwidth]{"
+                    + set_of_four[2][1]
+                    + "}} & "
+                    + "\\adjustbox{valign=t}{\\includegraphics[width=0.22\\textwidth]{"
+                    + set_of_four[3][1]
+                    + "}} \\\\\n"
+                )
+                e0 = f"\\\\Err={set_of_four[0][-1]:.2f}" if error_value != "" else ""
+                e1 = f"\\\\Err={set_of_four[1][-1]:.2f}" if error_value != "" else ""
+                e2 = f"\\\\Err={set_of_four[2][-1]:.2f}" if error_value != "" else ""
+                e3 = f"\\\\Err={set_of_four[3][-1]:.2f}" if error_value != "" else ""
+                tex.write(
+                    "\\tiny \\makecell{"
+                    + set_of_four[0][0]
+                    + e0
+                    + "} & "
+                    + "\\tiny \\makecell{"
+                    + set_of_four[1][0]
+                    + e1
+                    + "} & "
+                    + "\\tiny \\makecell{"
+                    + set_of_four[2][0]
+                    + e2
+                    + "} & "
+                    + "\\tiny \\makecell{"
+                    + set_of_four[3][0]
+                    + e3
+                    + "} \\\\\n"
+                )
+                tex.write("\\hline\n")
+                set_of_four = []
+                cnt = 0
+
+    make_images = f"./{output_directory}/make-images.sh"
+    with open(make_images, "w") as f:
+        f.write("""#!/bin/bash
+direct=.
+format='xyz'
+for file in *.$format;
+do
+	fname=$(basename "$file" .$format)
+	echo "Processing $fname"
+	sed "s/INSERT/$fname/g" script.pml > "$fname"-script.pml
+	pymol -cqr "$fname"-script.pml
+	# rm "$file"-script.pml
+done""")
+    with open(f"./{output_directory}/script.pml", "w") as f:
+        f.write("""
+load INSERT.xyz
+
+color grey, elem c
+label all, elem
+show spheres,*
+set sphere_scale, 0.25
+show stick,*
+set_bond stick_radius, 0.2, v.
+set stick_h_scale,1
+zoom center,5
+center v.
+rotate x, 5
+set ray_opaque_background, off
+set opaque_background, off
+
+ray 2000,2000
+png INSERT.png, dpi=200
+                """)
+    return
