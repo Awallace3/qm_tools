@@ -518,19 +518,19 @@ def create_latex_table_pymol(
         for i, row in df.iterrows():
             error_value = ""
             if df_err_column:
-                error_value = f",Err={row[df_err_column]:.2f} kcal/mol"
+                error_value = f", {row[df_err_column]:.2f}"
             if title_include_id:
                 title = f"{i},{row[df_id_column]}{error_value}"
             else:
                 title = f"{i}{error_value}"
             if visualize:
                 visualize_molecule(
-                    row["qcel_molecule"],
+                    row[df_qcel_column],
                     style="ball_and_stick",
                     title=title,
-                    temp_filename=f"./{output_directory}/{row['system_id']}.html",
+                    temp_filename=f"./{output_directory}/{row[df_id_column]}.html",
                 )
-            xyz = row["qcel_molecule"].to_string("xyz")
+            xyz = row[df_qcel_column].to_string("xyz")
             with open(f"./{output_directory}/{row[df_id_column]}.xyz", "w") as f:
                 f.write(xyz)
             set_of_four.append(
