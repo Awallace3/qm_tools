@@ -330,7 +330,7 @@ def convert_pos_carts_to_mol(
             m1 += "--\n"
         m1 += f"{charge_multiplicity[i][0]} {charge_multiplicity[i][1]}\n"
         m1 += print_cartesians_pos_carts(pos[i], carts[i], only_results=True)
-    m1 += f"units {units}\nno_com\nno_reorient\n" 
+    m1 += f"units {units}\nno_com\nno_reorient\n"
     mol = qcel.models.Molecule.from_data(m1)
     return mol
 
@@ -1232,18 +1232,20 @@ def fragment_molecule(mol: qcel.models.Molecule):
     from psi4.driver.qcdb.bfs import BFS
 
     frags = BFS(mol.geometry, mol.atomic_numbers, bond_threshold=1.4)
-    bond_thresholds = np.arange(1.4, 1.0, -0.01)
+    bond_thresholds = np.arange(1.8, 1.0, -0.01)
     for i in bond_thresholds:
         frags = BFS(mol.geometry, mol.atomic_numbers, bond_threshold=i)
         if len(frags) == 2:
             return frags
     # assert len(frags) == 2, "Expected exactly two fragments in the molecule. Got: {}".format(frags)
-    print("Expected exactly two fragments in the molecule. Got: {}".format(frags))
+    # print("Expected exactly two fragments in the molecule. Got: {}".format(frags))
     return
 
 
-def xyz_dimer_to_qcelemental_mol_dimer(xyz_path: str):
-    mol = qcel.models.Molecule.from_data(xyz_path, dtype="xyz")
+def xyz_dimer_to_qcelemental_mol_dimer(xyz_data: str, dtype="xyz"):
+    mol = qcel.models.Molecule.from_data(xyz_data, dtype=dtype)
+    if len(mol.fragments) == 2:
+        return mol
     frags = fragment_molecule(mol)
     if frags is None:
         return

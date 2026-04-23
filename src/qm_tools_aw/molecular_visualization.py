@@ -449,6 +449,9 @@ def create_latex_table_pymol(
     df, # pandas DataFrame with qcel molecules
     df_qcel_column="qcel_molecule",
     df_err_column=None,
+    df_err_column2=None,
+    df_err_column3=None,
+    df_ref_column=None,
     df_id_column="system_id",
     output_directory="mol_viz",
     title_include_id=True,
@@ -517,12 +520,21 @@ def create_latex_table_pymol(
         cnt = 0
         for i, row in df.iterrows():
             error_value = ""
+            error_value2 = ""
+            error_value3 = ""
+            ref_value = ""
             if df_err_column:
-                error_value = f", {row[df_err_column]:.2f}"
+                error_value = f" {row[df_err_column]:.2f}"
+            if df_err_column2:
+                error_value2 = f" {row[df_err_column2]:.2f}"
+            if df_err_column3:
+                error_value3 = f" {row[df_err_column3]:.2f}"
+            if df_ref_column:
+                ref_value = f" {row[df_ref_column]:.2f}"
             if title_include_id:
-                title = f"{i},{row[df_id_column]}{error_value}"
+                title = f"{i},{row[df_id_column]}{error_value}{error_value2}{error_value3}{ref_value}"
             else:
-                title = f"{i}{error_value}"
+                title = f"{i}{error_value}{error_value2}{error_value3}{ref_value}"
             if visualize:
                 visualize_molecule(
                     row[df_qcel_column],
@@ -541,6 +553,9 @@ def create_latex_table_pymol(
                     .replace("]", "\\]"),
                     f"./{row[df_id_column]}.png",
                     error_value,
+                    error_value2,
+                    error_value3,
+                    ref_value,
                 ]
             )
             cnt += 1
@@ -559,26 +574,50 @@ def create_latex_table_pymol(
                     + set_of_four[3][1]
                     + "}} \\\\\n"
                 )
-                e0 = f"\\\\Err={set_of_four[0][-1]:.2f}" if error_value != "" else ""
-                e1 = f"\\\\Err={set_of_four[1][-1]:.2f}" if error_value != "" else ""
-                e2 = f"\\\\Err={set_of_four[2][-1]:.2f}" if error_value != "" else ""
-                e3 = f"\\\\Err={set_of_four[3][-1]:.2f}" if error_value != "" else ""
+                e0 = f"\\\\Err={set_of_four[0][-4]}" if error_value != "" else ""
+                e1 = f"\\\\Err={set_of_four[1][-4]}" if error_value != "" else ""
+                e2 = f"\\\\Err={set_of_four[2][-4]}" if error_value != "" else ""
+                e3 = f"\\\\Err={set_of_four[3][-4]}" if error_value != "" else ""
+                e20 = f"\\\\Err2={set_of_four[0][-3]}" if error_value != "" else ""
+                e21 = f"\\\\Err2={set_of_four[1][-3]}" if error_value != "" else ""
+                e22 = f"\\\\Err2={set_of_four[2][-3]}" if error_value != "" else ""
+                e23 = f"\\\\Err2={set_of_four[3][-3]}" if error_value != "" else ""
+                e30 = f"\\\\Err3={set_of_four[0][-2]}" if error_value != "" else ""
+                e31 = f"\\\\Err3={set_of_four[1][-2]}" if error_value != "" else ""
+                e32 = f"\\\\Err3={set_of_four[2][-2]}" if error_value != "" else ""
+                e33 = f"\\\\Err3={set_of_four[3][-2]}" if error_value != "" else ""
+                r0 = f"\\\\Ref={set_of_four[0][-1]}" if ref_value != "" else ""
+                r1 = f"\\\\Ref={set_of_four[1][-1]}" if ref_value != "" else ""
+                r2 = f"\\\\Ref={set_of_four[2][-1]}" if ref_value != "" else ""
+                r3 = f"\\\\Ref={set_of_four[3][-1]}" if ref_value != "" else ""
                 tex.write(
                     "\\tiny \\makecell{"
                     + set_of_four[0][0]
                     + e0
+                    + e20
+                    + e30
+                    + r0
                     + "} & "
                     + "\\tiny \\makecell{"
                     + set_of_four[1][0]
                     + e1
+                    + e21
+                    + e31
+                    + r1
                     + "} & "
                     + "\\tiny \\makecell{"
                     + set_of_four[2][0]
                     + e2
+                    + e22
+                    + e32
+                    + r2
                     + "} & "
                     + "\\tiny \\makecell{"
                     + set_of_four[3][0]
                     + e3
+                    + e23
+                    + e33
+                    + r3
                     + "} \\\\\n"
                 )
                 tex.write("\\hline\n")
