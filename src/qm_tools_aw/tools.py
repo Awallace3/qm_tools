@@ -306,6 +306,7 @@ def convert_pos_carts_to_mol(
         [0, 1],
         [0, 1],
     ],
+    units="bohr",
 ):
     """
     Convert atomic positions and Cartesian coordinates to a QCElemental Molecule.
@@ -329,7 +330,7 @@ def convert_pos_carts_to_mol(
             m1 += "--\n"
         m1 += f"{charge_multiplicity[i][0]} {charge_multiplicity[i][1]}\n"
         m1 += print_cartesians_pos_carts(pos[i], carts[i], only_results=True)
-    m1 += "units bohr\nno_com\nno_reorient\n" 
+    m1 += f"units {units}\nno_com\nno_reorient\n" 
     mol = qcel.models.Molecule.from_data(m1)
     return mol
 
@@ -865,8 +866,8 @@ def mol_to_pos_carts_ma_mb(mol, units_angstroms=True):
     cD = mol.geometry
     if units_angstroms:
         cD = cD * qcel.constants.conversion_factor("bohr", "angstrom")
-    pD = mol.atomic_numbers
-    geom = np.hstack((pD.reshape(-1, 1), cD))
+    pD = np.array(mol.atomic_numbers, dtype=np.int32)
+    geom = np.hstack((pD.reshape(-1, 1), cD), dtype=np.float64)
     ma = list(mol.fragments[0])
     mb = list(mol.fragments[1])
     charges = np.array(
